@@ -1,10 +1,66 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:sqflite/sqflite.dart';
 import 'database_helper.dart';
-import 'models/KanjiModel.dart';
-import 'models/WordModel.dart';
+// import 'models/KanjiModel.dart';
+// import 'models/WordModel.dart';
 import 'dictionary_screen.dart';
-void main() {
+import 'dart:async';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await deleteDatabaseFile(); // Xóa database cũ
+  await copyDatabaseFromAssets(); // Sao chép database mới
+  await checkDatabase(); // Kiểm tra lại
   runApp(MyApp());
+}
+
+// Future<void> checkDatabase() async {
+//   final db = await DatabaseHelper().database;
+//   final result =
+//       await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'");
+//   print("Tables in database: ${result.map((e) => e['name'])}");
+// }
+Future<void> checkDatabase() async {
+  final databasesPath = await getDatabasesPath();
+  final dbPath = "$databasesPath/dictionary.db";
+
+  print("Database path: $dbPath"); // Kiểm tra đường dẫn database
+
+  final db = await DatabaseHelper().database;
+  final result =
+      await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'");
+  print("Tables in database: ${result.map((e) => e['name'])}");
+}
+
+Future<void> deleteDatabaseFile() async {
+  final databasesPath = await getDatabasesPath();
+  final dbPath = "$databasesPath/dictionary.db";
+
+  if (await File(dbPath).exists()) {
+    await File(dbPath).delete();
+    print("Database deleted successfully!");
+  } else {
+    print("Database does not exist.");
+  }
+}
+
+Future<void> copyDatabaseFromAssets() async {
+  final databasesPath = await getDatabasesPath();
+  final dbPath = "$databasesPath/dictionary.db";
+
+  if (!await File(dbPath).exists()) {
+    print("Copying database from assets...");
+    ByteData data = await rootBundle.load('assets/dictionary.db');
+    List<int> bytes = data.buffer.asUint8List();
+    await File(dbPath).writeAsBytes(bytes);
+    print("Database copied successfully!");
+  } else {
+    print("Database already exists.");
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -16,66 +72,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-// class DictionaryScreen extends StatefulWidget {
-//   @override
-//   _DictionaryScreenState createState() => _DictionaryScreenState();
-// }
-
-// class _DictionaryScreenState extends State<DictionaryScreen> {
-//   DatabaseHelper dbHelper = DatabaseHelper();
-//   List<Kanji> kanjiResults = [];
-//   List<Word> wordResults = [];
-//   TextEditingController searchController = TextEditingController();
-
-//   void search(String query) async {
-//     final kanjiList = await dbHelper.getKanjiList(query);
-//     final wordList = await dbHelper.getWordList(query);
-//     setState(() {
-//       kanjiResults = kanjiList;
-//       wordResults = wordList;
-//     });
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(title: Text('Từ điển tiếng Nhật')),
-//       body: Column(
-//         children: [
-//           Padding(
-//             padding: EdgeInsets.all(8.0),
-//             child: TextField(
-//               controller: searchController,
-//               decoration: InputDecoration(
-//                 labelText: 'Nhập từ cần tra...',
-//                 border: OutlineInputBorder(),
-//               ),
-//               onChanged: search,
-//             ),
-//           ),
-//           Expanded(
-//             child: ListView(
-//               children: [
-//                 if (kanjiResults.isNotEmpty) ...[
-//                   ListTile(title: Text('Kanji')),
-//                   ...kanjiResults.map((kanji) => ListTile(
-//                         title: Text(kanji.kanji, style: TextStyle(fontSize: 24)),
-//                         subtitle: Text('Ý nghĩa: ${kanji.meanings}'),
-//                       )),
-//                 ],
-//                 if (wordResults.isNotEmpty) ...[
-//                   ListTile(title: Text('Từ vựng')),
-//                   ...wordResults.map((word) => ListTile(
-//                         title: Text(word.written),
-//                         subtitle: Text('${word.pronounced} - ${word.glosses}'),
-//                       )),
-//                 ],
-//               ],
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }

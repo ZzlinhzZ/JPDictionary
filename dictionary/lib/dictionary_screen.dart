@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'database_helper.dart';
 import 'models/KanjiModel.dart';
 import 'models/WordModel.dart';
-// import 'vocabulary_screen.dart';
-// import 'kanji_screen.dart';
-// import 'my_kanji_screen.dart';
 import '../screens/vocabulary_screen.dart';
 import '../screens/kanji_screen.dart';
 import '../screens/my_kanji_screen.dart';
@@ -46,8 +43,10 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       }
     }
 
-    wordList.sort((a, b) => (a.written == query ? 0 : 1).compareTo(b.written == query ? 0 : 1));
-    kanjiList.sort((a, b) => (a.kanji == query ? 0 : 1).compareTo(b.kanji == query ? 0 : 1));
+    wordList.sort((a, b) =>
+        (a.written == query ? 0 : 1).compareTo(b.written == query ? 0 : 1));
+    kanjiList.sort((a, b) =>
+        (a.kanji == query ? 0 : 1).compareTo(b.kanji == query ? 0 : 1));
 
     setState(() {
       kanjiResults = kanjiList;
@@ -58,7 +57,8 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
   void handleSelection(dynamic item) async {
     if (item is Word) {
-      final words = wordResults.where((w) => w.written == item.written).toList();
+      final words =
+          wordResults.where((w) => w.written == item.written).toList();
       final kanjiList = <Kanji>[];
 
       for (var char in item.written.split('')) {
@@ -97,7 +97,8 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                 onSubmitted: (_) => handleEnterPressed(),
                 decoration: InputDecoration(
                   hintText: "Nhập từ khóa...",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   prefixIcon: Icon(Icons.search),
                   suffixIcon: searchController.text.isNotEmpty
                       ? IconButton(
@@ -111,7 +112,8 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                 ),
               ),
             ),
-            if (isSearching && (kanjiResults.isNotEmpty || wordResults.isNotEmpty))
+            if (isSearching &&
+                (kanjiResults.isNotEmpty || wordResults.isNotEmpty))
               Container(
                 height: 200, // Giới hạn chiều cao danh sách kết quả
                 child: ListView(
@@ -119,11 +121,14 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                   children: [
                     if (wordResults.isNotEmpty) ...[
                       ListTile(
-                        title: Text("Từ vựng", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        title: Text("Từ vựng",
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
                       ...wordResults.map(
                         (word) => ListTile(
-                          title: Text(word.written, style: TextStyle(fontSize: 20)),
+                          title: Text(word.written,
+                              style: TextStyle(fontSize: 20)),
                           subtitle: Text(word.glosses),
                           onTap: () => handleSelection(word),
                         ),
