@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:flutter/services.dart' show rootBundle;
-import 'dart:io';  // dùng lớp file
-import 'dart:typed_data';  // dùng lớp ByteData
-// import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-// Import sqflite_common_ffi for desktop or test environments
-
+import 'database_helper.dart';
+import 'models/KanjiModel.dart';
+import 'models/WordModel.dart';
+import 'dictionary_screen.dart';
 void main() {
   runApp(MyApp());
 }
@@ -15,95 +11,71 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SQLite Viewer',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: HomePage(),
+      debugShowCheckedModeBanner: false,
+      home: DictionaryScreen(),
     );
   }
 }
 
-class HomePage extends StatefulWidget {
-  @override
-  _HomePageState createState() => _HomePageState();
-}
+// class DictionaryScreen extends StatefulWidget {
+//   @override
+//   _DictionaryScreenState createState() => _DictionaryScreenState();
+// }
 
-class _HomePageState extends State<HomePage> {
-  Database? _database;
-  List<Map<String, dynamic>> _kanjiData = [];
-  List<Map<String, dynamic>> _wordsData = [];
+// class _DictionaryScreenState extends State<DictionaryScreen> {
+//   DatabaseHelper dbHelper = DatabaseHelper();
+//   List<Kanji> kanjiResults = [];
+//   List<Word> wordResults = [];
+//   TextEditingController searchController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    _initDatabase();
-  }
+//   void search(String query) async {
+//     final kanjiList = await dbHelper.getKanjiList(query);
+//     final wordList = await dbHelper.getWordList(query);
+//     setState(() {
+//       kanjiResults = kanjiList;
+//       wordResults = wordList;
+//     });
+//   }
 
-  Future<void> _initDatabase() async {
-    // Copy the database file from assets to the device
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'dictionary.db');
-
-    // Check if the database already exists
-    final exists = await databaseExists(path);
-
-    if (!exists) {
-      // Copy from assets
-      ByteData data = await rootBundle.load('assets/dictionary.db');
-      List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-
-      // Write the bytes to the file
-      await File(path).writeAsBytes(bytes, flush: true);
-    }
-
-    // Open the database
-    _database = await openDatabase(path);
-
-    // Fetch data for id = 1
-    await _fetchData();
-  }
-
-  Future<void> _fetchData() async {
-    if (_database == null) return;
-
-    // Fetch data from kanji table
-    final kanjiData = await _database!.query('kanji', where: 'id = ?', whereArgs: [1]);
-    final wordsData = await _database!.query('words_test', where: 'id = ?', whereArgs: [1]);
-     
-    // In ra dữ liệu để kiểm tra
-    print('Kanji Data: $kanjiData');
-    print('Words Data: $wordsData');
-
-    setState(() {
-      _kanjiData = kanjiData;
-      _wordsData = wordsData;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('SQLite Viewer')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Kanji Table:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            ..._kanjiData.map((e) => Text(e.toString())).toList(),
-            SizedBox(height: 20),
-            Text('Words Test Table:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            ..._wordsData.map((e) => Text(e.toString())).toList(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _database?.close();
-    super.dispose();
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: Text('Từ điển tiếng Nhật')),
+//       body: Column(
+//         children: [
+//           Padding(
+//             padding: EdgeInsets.all(8.0),
+//             child: TextField(
+//               controller: searchController,
+//               decoration: InputDecoration(
+//                 labelText: 'Nhập từ cần tra...',
+//                 border: OutlineInputBorder(),
+//               ),
+//               onChanged: search,
+//             ),
+//           ),
+//           Expanded(
+//             child: ListView(
+//               children: [
+//                 if (kanjiResults.isNotEmpty) ...[
+//                   ListTile(title: Text('Kanji')),
+//                   ...kanjiResults.map((kanji) => ListTile(
+//                         title: Text(kanji.kanji, style: TextStyle(fontSize: 24)),
+//                         subtitle: Text('Ý nghĩa: ${kanji.meanings}'),
+//                       )),
+//                 ],
+//                 if (wordResults.isNotEmpty) ...[
+//                   ListTile(title: Text('Từ vựng')),
+//                   ...wordResults.map((word) => ListTile(
+//                         title: Text(word.written),
+//                         subtitle: Text('${word.pronounced} - ${word.glosses}'),
+//                       )),
+//                 ],
+//               ],
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
