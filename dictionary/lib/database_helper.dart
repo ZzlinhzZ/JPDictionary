@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'models/KanjiModel.dart';
+import 'models/SavedKanjiModel.dart';
 import 'models/WordModel.dart';
 
 class DatabaseHelper {
@@ -59,17 +60,55 @@ class DatabaseHelper {
     return results;
   }
 
-  Future<void> saveKanji(String kanji) async {
+  Future<void> saveWord(
+      String written, String pronounced, String glosses) async {
     final db = await database;
-    await db.insert('saved_kanji', {'kanji': kanji},
-        conflictAlgorithm: ConflictAlgorithm.ignore);
+    await db.insert(
+        'saved_kanji',
+        {
+          'kanji': written, // Lưu toàn bộ từ vựng
+          'pronounced': pronounced,
+          'meaning': glosses
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<void> removeKanji(String kanji) async {
+  Future<void> removeWord(String written) async {
     final db = await database;
-    await db.delete('saved_kanji', where: 'kanji = ?', whereArgs: [kanji]);
+    await db.delete('saved_kanji', where: 'kanji = ?', whereArgs: [written]);
   }
 
+  // Future<bool> isKanjiSaved(String kanji) async {
+  //   final db = await database;
+  //   final result =
+  //       await db.query('saved_kanji', where: 'kanji = ?', whereArgs: [kanji]);
+  //   return result.isNotEmpty;
+  // }
+
+  // Future<List<String>> getSavedKanji() async {
+  //   final db = await database;
+  //   final result = await db.query('saved_kanji');
+  //   return result.map((e) => e['kanji'] as String).toList();
+  // }
+
+  //
+  // Thêm một từ vào bảng saved_kanji
+  Future<void> saveKanji(SavedKanji kanji) async {
+    final db = await database;
+    await db.insert(
+      'saved_kanji',
+      kanji.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+// Xóa một từ khỏi bảng saved_kanji
+  Future<void> removeKanji(int id) async {
+    final db = await database;
+    await db.delete('saved_kanji', where: 'id = ?', whereArgs: [id]);
+  }
+
+// Kiểm tra xem Kanji đã được lưu chưa
   Future<bool> isKanjiSaved(String kanji) async {
     final db = await database;
     final result =
@@ -77,9 +116,10 @@ class DatabaseHelper {
     return result.isNotEmpty;
   }
 
-  Future<List<String>> getSavedKanji() async {
+// Lấy danh sách tất cả Kanji đã lưu
+  Future<List<SavedKanji>> getSavedKanji() async {
     final db = await database;
-    final result = await db.query('saved_kanji');
-    return result.map((e) => e['kanji'] as String).toList();
+    final resuilt = await db.query('saved_kanji');
+    return resuilt.map((e) => SavedKanji.fromMap(e)).toList();
   }
 }
