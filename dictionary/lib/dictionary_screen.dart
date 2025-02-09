@@ -32,6 +32,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
     final wordList = await dbHelper.getWordList(query);
     final kanjiList = await dbHelper.getKanjiList(query);
+    final exactWordMatch = await dbHelper.getExactWordMatch(query);
 
     // Lọc ra các từ `written` duy nhất để tránh trùng lặp trong kết quả tìm kiếm
     Set<String> uniqueWords = {};
@@ -42,7 +43,12 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
         filteredWords.add(word);
       }
     }
-
+    // Nếu có từ khớp chính xác, đặt nó lên đầu danh sách
+    if (exactWordMatch != null) {
+      filteredWords
+          .removeWhere((word) => word.written == exactWordMatch.written);
+      filteredWords.insert(0, exactWordMatch);
+    }
     wordList.sort((a, b) =>
         (a.written == query ? 0 : 1).compareTo(b.written == query ? 0 : 1));
     kanjiList.sort((a, b) =>

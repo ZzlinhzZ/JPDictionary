@@ -1,3 +1,4 @@
+import 'package:dictionary/models/SavedKanjiModel.dart';
 import 'package:flutter/material.dart';
 import '../models/KanjiModel.dart';
 import '../database_helper.dart';
@@ -22,19 +23,32 @@ class _KanjiScreenState extends State<KanjiScreen> {
   }
 
   void loadSavedKanji() async {
-    final saved = await dbHelper.getSavedKanji();
+    final savedList = await dbHelper.getSavedKanji();
     setState(() {
-      savedKanji = saved.toSet();
+      savedKanji =
+          savedList.map((item) => item.kanji).toSet(); // Chỉ lấy giá trị kanji
     });
   }
 
-  void toggleSave(String kanji) async {
-    if (savedKanji.contains(kanji)) {
-      await dbHelper.removeKanji(kanji);
-      savedKanji.remove(kanji);
+  void toggleSave(Kanji kanji) async {
+    if (savedKanji.contains(kanji.kanji)) {
+      final dbHelper = DatabaseHelper();
+      final savedList = await dbHelper.getSavedKanji();
+      final savedItem = savedList.firstWhere(
+          (item) => item.kanji == kanji.kanji,
+          orElse: () =>
+              SavedKanji(id: -1, kanji: '', pronounced: '', meaning: ''));
+      if (savedItem.id != -1) {
+        await dbHelper.removeKanji(savedItem.id!);
+        savedKanji.remove(kanji.kanji);
+      }
     } else {
-      await dbHelper.saveKanji(kanji);
-      savedKanji.add(kanji);
+      await dbHelper.saveKanji(SavedKanji(
+        kanji: kanji.kanji,
+        pronounced: kanji.kunReadings ?? '',
+        meaning: kanji.meanings ?? '',
+      ));
+      savedKanji.add(kanji.kanji);
     }
     setState(() {});
   }
@@ -79,7 +93,7 @@ class _KanjiScreenState extends State<KanjiScreen> {
             trailing: IconButton(
               icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border,
                   color: isSaved ? Colors.blue : Colors.grey),
-              onPressed: () => toggleSave(kanji.kanji),
+              onPressed: () => toggleSave(kanji),
             ),
           ),
         );

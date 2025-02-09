@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/SavedKanjiModel.dart';
 import '../models/WordModel.dart';
 import '../database_helper.dart';
 
@@ -22,19 +23,32 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
   }
 
   void loadSavedKanji() async {
-    final saved = await dbHelper.getSavedKanji();
+    final savedList = await dbHelper.getSavedKanji();
     setState(() {
-      savedKanji = saved.toSet();
+      savedKanji =
+          savedList.map((item) => item.kanji).toSet(); // Chỉ lấy giá trị kanji
     });
   }
 
-  void toggleSave(String kanji) async {
-    if (savedKanji.contains(kanji)) {
-      await dbHelper.removeKanji(kanji);
-      savedKanji.remove(kanji);
+  void toggleSave(Word word) async {
+    if (savedKanji.contains(word.written)) {
+      final dbHelper = DatabaseHelper();
+      final savedList = await dbHelper.getSavedKanji();
+      final savedItem = savedList.firstWhere(
+          (item) => item.kanji == word.written,
+          orElse: () =>
+              SavedKanji(id: -1, kanji: '', pronounced: '', meaning: ''));
+      if (savedItem.id != -1) {
+        await dbHelper.removeKanji(savedItem.id!);
+        savedKanji.remove(word.written);
+      }
     } else {
-      await dbHelper.saveKanji(kanji);
-      savedKanji.add(kanji);
+      await dbHelper.saveKanji(SavedKanji(
+        kanji: word.written,
+        pronounced: word.pronounced,
+        meaning: word.glosses,
+      ));
+      savedKanji.add(word.written);
     }
     setState(() {});
   }
@@ -87,7 +101,17 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
             trailing: IconButton(
               icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border,
                   color: isSaved ? Colors.blue : Colors.grey),
-              onPressed: () => toggleSave(written),
+              onPressed: () {
+                final word = widget.words.firstWhere(
+                    (w) => w.written == written,
+                    orElse: () => Word(
+                        id: 0,
+                        written: written,
+                        pronounced: '',
+                        glosses: '',
+                        kanji: ''));
+                toggleSave(word);
+              },
             ),
           ),
         );
