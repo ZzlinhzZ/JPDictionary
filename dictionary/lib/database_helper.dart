@@ -1,7 +1,3 @@
-import 'dart:io';
-// import 'dart:typed_data';
-
-import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'models/KanjiModel.dart';
@@ -15,13 +11,6 @@ class DatabaseHelper {
     _database = await initDB();
     return _database!;
   }
-
-  // Future<void> checkDatabase() async {
-  //   final db = await DatabaseHelper().database;
-  //   final result =
-  //       await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'");
-  //   print("Tables in database: ${result.map((e) => e['name'])}");
-  // }
 
   Future<Database> initDB() async {
     String path = join(await getDatabasesPath(), 'dictionary.db');
@@ -74,5 +63,23 @@ class DatabaseHelper {
     final db = await database;
     await db.insert('saved_kanji', {'kanji': kanji},
         conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  Future<void> removeKanji(String kanji) async {
+    final db = await database;
+    await db.delete('saved_kanji', where: 'kanji = ?', whereArgs: [kanji]);
+  }
+
+  Future<bool> isKanjiSaved(String kanji) async {
+    final db = await database;
+    final result =
+        await db.query('saved_kanji', where: 'kanji = ?', whereArgs: [kanji]);
+    return result.isNotEmpty;
+  }
+
+  Future<List<String>> getSavedKanji() async {
+    final db = await database;
+    final result = await db.query('saved_kanji');
+    return result.map((e) => e['kanji'] as String).toList();
   }
 }

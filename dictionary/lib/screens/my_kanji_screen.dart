@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database_helper.dart';
+
 class MyKanjiScreen extends StatefulWidget {
   @override
   _MyKanjiScreenState createState() => _MyKanjiScreenState();
@@ -30,7 +31,8 @@ class _MyKanjiScreenState extends State<MyKanjiScreen> {
         return Card(
           margin: EdgeInsets.all(8),
           child: ListTile(
-            title: Text(savedKanji[index], style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+            title: Text(savedKanji[index],
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
           ),
         );
       },
