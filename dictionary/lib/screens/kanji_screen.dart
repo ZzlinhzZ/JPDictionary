@@ -1,99 +1,46 @@
-import 'package:dictionary/models/SavedKanjiModel.dart';
 import 'package:flutter/material.dart';
-import '../models/KanjiModel.dart';
-import '../database_helper.dart';
+import '../models/kanji_model.dart';
 
-class KanjiScreen extends StatefulWidget {
+class KanjiScreen extends StatelessWidget {
   final List<Kanji> kanjiList;
+  final String searchQuery;
 
-  KanjiScreen({required this.kanjiList});
-
-  @override
-  _KanjiScreenState createState() => _KanjiScreenState();
-}
-
-class _KanjiScreenState extends State<KanjiScreen> {
-  final DatabaseHelper dbHelper = DatabaseHelper();
-  Set<String> savedKanji = {};
-
-  @override
-  void initState() {
-    super.initState();
-    loadSavedKanji();
-  }
-
-  void loadSavedKanji() async {
-    final savedList = await dbHelper.getSavedKanji();
-    setState(() {
-      savedKanji =
-          savedList.map((item) => item.kanji).toSet(); // Chỉ lấy giá trị kanji
-    });
-  }
-
-  void toggleSave(Kanji kanji) async {
-    if (savedKanji.contains(kanji.kanji)) {
-      final dbHelper = DatabaseHelper();
-      final savedList = await dbHelper.getSavedKanji();
-      final savedItem = savedList.firstWhere(
-          (item) => item.kanji == kanji.kanji,
-          orElse: () =>
-              SavedKanji(id: -1, kanji: '', pronounced: '', meaning: ''));
-      if (savedItem.id != -1) {
-        await dbHelper.removeKanji(savedItem.id!);
-        savedKanji.remove(kanji.kanji);
-      }
-    } else {
-      await dbHelper.saveKanji(SavedKanji(
-        kanji: kanji.kanji,
-        pronounced: kanji.kunReadings ?? '',
-        meaning: kanji.meanings ?? '',
-      ));
-      savedKanji.add(kanji.kanji);
-    }
-    setState(() {});
-  }
+  KanjiScreen({required this.kanjiList, required this.searchQuery});
 
   @override
   Widget build(BuildContext context) {
-    if (widget.kanjiList.isEmpty) {
-      return Center(
-          child:
-              Text("Không tìm thấy hán tự.", style: TextStyle(fontSize: 18)));
+    // Tạo một danh sách các kanji từ searchQuery
+    List<String> queryKanji = searchQuery.split(''); // Chia từ khóa thành từng kanji riêng biệt
+
+    // Lọc danh sách kanji dựa trên việc kiểm tra các kanji trong searchQuery
+    final filteredKanjiList = kanjiList.where((kanji) {
+      // Kiểm tra nếu kanji có trong danh sách các kanji của searchQuery
+      return queryKanji.contains(kanji.kanji);
+    }).toList();
+
+    if (filteredKanjiList.isEmpty) {
+      return Center(child: Text("Không tìm thấy hán tự.", style: TextStyle(fontSize: 18)));
     }
 
     return ListView.builder(
       padding: EdgeInsets.all(8),
-      itemCount: widget.kanjiList.length,
+      itemCount: filteredKanjiList.length,
       itemBuilder: (context, index) {
-        final kanji = widget.kanjiList[index];
-        bool isSaved = savedKanji.contains(kanji.kanji);
+        final kanji = filteredKanjiList[index];
         return Card(
           elevation: 3,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ListTile(
             contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            title: Text(kanji.kanji,
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+            title: Text(kanji.kanji, style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: 4),
-                Text('Nghĩa: ${kanji.meanings}',
-                    style: TextStyle(fontSize: 16)),
-                SizedBox(height: 4),
-                Text('Âm Kun: ${kanji.kunReadings}',
-                    style: TextStyle(fontSize: 16)),
-                Text('Âm On: ${kanji.onReadings}',
-                    style: TextStyle(fontSize: 16)),
-                Text('Số nét: ${kanji.strokeCount}',
-                    style: TextStyle(fontSize: 16)),
+                Text('Nghĩa: ${kanji.meanings}'),
+                Text('Âm Kun: ${kanji.kunReadings}'),
+                Text('Âm On: ${kanji.onReadings}'),
+                Text('Số nét: ${kanji.strokeCount}'),
               ],
-            ),
-            trailing: IconButton(
-              icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border,
-                  color: isSaved ? Colors.blue : Colors.grey),
-              onPressed: () => toggleSave(kanji),
             ),
           ),
         );

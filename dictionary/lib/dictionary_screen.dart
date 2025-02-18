@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'database_helper.dart';
-import 'models/KanjiModel.dart';
-import 'models/WordModel.dart';
-import '../screens/vocabulary_screen.dart';
-import '../screens/kanji_screen.dart';
-import '../screens/my_kanji_screen.dart';
+import 'package:http/http.dart' as http;
+import 'services/api_service.dart';
+import 'models/word_model.dart';
+import 'models/kanji_model.dart';
+import 'screens/vocabulary_screen.dart';
+import 'screens/kanji_screen.dart';
+import 'screens/my_kanji_screen.dart';
 
 class DictionaryScreen extends StatefulWidget {
   @override
@@ -12,81 +13,78 @@ class DictionaryScreen extends StatefulWidget {
 }
 
 class _DictionaryScreenState extends State<DictionaryScreen> {
-  DatabaseHelper dbHelper = DatabaseHelper();
-  List<Kanji> kanjiResults = [];
+  ApiService apiService = ApiService();
   List<Word> wordResults = [];
-  List<Word> selectedWords = [];
-  List<Kanji> selectedKanjiList = [];
+  List<Kanji> kanjiResults = [];
   TextEditingController searchController = TextEditingController();
-  bool isSearching = false;
 
-  void search(String query) async {
-    if (query.isEmpty) {
-      setState(() {
-        kanjiResults.clear();
-        wordResults.clear();
-        isSearching = false;
-      });
-      return;
-    }
+void search(String query) async {
+  if (query.isEmpty) {
+    setState(() {
+      wordResults.clear();
+      kanjiResults.clear();
+    });
+    return;
+  }
 
-    final wordList = await dbHelper.getWordList(query);
-    final kanjiList = await dbHelper.getKanjiList(query);
-    final exactWordMatch = await dbHelper.getExactWordMatch(query);
-
-    // Lọc ra các từ `written` duy nhất để tránh trùng lặp trong kết quả tìm kiếm
-    Set<String> uniqueWords = {};
-    List<Word> filteredWords = [];
-    for (var word in wordList) {
-      if (!uniqueWords.contains(word.written)) {
-        uniqueWords.add(word.written);
-        filteredWords.add(word);
-      }
-    }
-    // Nếu có từ khớp chính xác, đặt nó lên đầu danh sách
-    if (exactWordMatch != null) {
-      filteredWords
-          .removeWhere((word) => word.written == exactWordMatch.written);
-      filteredWords.insert(0, exactWordMatch);
-    }
-    wordList.sort((a, b) =>
-        (a.written == query ? 0 : 1).compareTo(b.written == query ? 0 : 1));
-    kanjiList.sort((a, b) =>
-        (a.kanji == query ? 0 : 1).compareTo(b.kanji == query ? 0 : 1));
+  try {
+    // Gửi từ khóa vào API để tìm kiếm
+    List<Word> words = await apiService.getWords(query);
+    List<Kanji> kanji = await apiService.getKanji(query);
 
     setState(() {
-      kanjiResults = kanjiList;
-      wordResults = filteredWords; // Sử dụng danh sách đã lọc
-      isSearching = true;
+      wordResults = words;
+      kanjiResults = kanji;
     });
+  } catch (e) {
+    _showErrorDialog("Lỗi kết nối API: $e");
   }
+}
 
-  void handleSelection(dynamic item) async {
-    if (item is Word) {
-      final words =
-          wordResults.where((w) => w.written == item.written).toList();
-      final kanjiList = <Kanji>[];
 
-      for (var char in item.written.split('')) {
-        final kanji = await dbHelper.getKanjiList(char);
-        if (kanji.isNotEmpty) {
-          kanjiList.addAll(kanji);
-        }
+  void checkApiConnection() async {
+    try {
+      final response = await http.get(Uri.parse("${ApiService.baseUrl}/words?search=test"));
+      if (response.statusCode == 200) {
+        _showSuccessDialog("API kết nối thành công!");
+      } else {
+        _showErrorDialog("Lỗi: API phản hồi với mã trạng thái ${response.statusCode}");
       }
-
-      setState(() {
-        selectedWords = words;
-        selectedKanjiList = kanjiList;
-        searchController.text = item.written;
-        isSearching = false;
-      });
+    } catch (e) {
+      _showErrorDialog("Không thể kết nối API: $e");
     }
   }
 
-  void handleEnterPressed() {
-    if (wordResults.isNotEmpty) {
-      handleSelection(wordResults.first);
-    }
+  void _showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Thành công"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Lỗi"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -97,52 +95,29 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           children: [
             Padding(
               padding: EdgeInsets.all(8.0),
-              child: TextField(
-                controller: searchController,
-                onChanged: search,
-                onSubmitted: (_) => handleEnterPressed(),
-                decoration: InputDecoration(
-                  hintText: "Nhập từ khóa...",
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: Icon(Icons.search),
-                  suffixIcon: searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(Icons.clear),
-                          onPressed: () {
-                            searchController.clear();
-                            search('');
-                          },
-                        )
-                      : null,
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: searchController,
+                      onChanged: search,
+                      onSubmitted: (query){
+                        search(query);
+                      },
+                      decoration: InputDecoration(
+                        hintText: "Nhập từ khóa...",
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.wifi),
+                    onPressed: checkApiConnection, // Nút kiểm tra API
+                  ),
+                ],
               ),
             ),
-            if (isSearching &&
-                (kanjiResults.isNotEmpty || wordResults.isNotEmpty))
-              Container(
-                height: 200, // Giới hạn chiều cao danh sách kết quả
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    if (wordResults.isNotEmpty) ...[
-                      ListTile(
-                        title: Text("Từ vựng",
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                      ...wordResults.map(
-                        (word) => ListTile(
-                          title: Text(word.written,
-                              style: TextStyle(fontSize: 20)),
-                          subtitle: Text(word.glosses),
-                          onTap: () => handleSelection(word),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
             Expanded(
               child: DefaultTabController(
                 length: 3,
@@ -158,8 +133,10 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                     Expanded(
                       child: TabBarView(
                         children: [
-                          VocabularyScreen(words: selectedWords),
-                          KanjiScreen(kanjiList: selectedKanjiList),
+                          VocabularyScreen(words: wordResults),
+                          // KanjiScreen(kanjiList: kanjiResults),
+                          // KanjiScreen(kanjiList: kanjiResults, searchQuery: searchController.text),
+                            KanjiScreen(kanjiList: kanjiResults, searchQuery: searchController.text),
                           MyKanjiScreen(),
                         ],
                       ),
