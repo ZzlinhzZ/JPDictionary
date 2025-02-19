@@ -136,7 +136,7 @@ void search(String query) async {
                           VocabularyScreen(words: wordResults),
                           // KanjiScreen(kanjiList: kanjiResults),
                           // KanjiScreen(kanjiList: kanjiResults, searchQuery: searchController.text),
-                            KanjiScreen(kanjiList: kanjiResults, searchQuery: searchController.text),
+                          KanjiScreen(kanjiList: kanjiResults, searchQuery: searchController.text),
                           MyKanjiScreen(),
                         ],
                       ),

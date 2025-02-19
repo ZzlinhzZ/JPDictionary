@@ -8,7 +8,9 @@ class MyKanjiScreen extends StatefulWidget {
 
 class _MyKanjiScreenState extends State<MyKanjiScreen> {
   ApiService apiService = ApiService();
-  List<String> savedKanji = [];
+  List<Map<String, dynamic>> savedKanji = [];
+  bool showPronounced = true;
+  bool showMeaning = true;
 
   @override
   void initState() {
@@ -17,7 +19,7 @@ class _MyKanjiScreenState extends State<MyKanjiScreen> {
   }
 
   void loadSavedKanji() async {
-    List<String> kanjiList = await apiService.getSavedKanji();
+    List<Map<String, dynamic>> kanjiList = await apiService.getSavedKanji();
     setState(() {
       savedKanji = kanjiList;
     });
@@ -29,18 +31,64 @@ class _MyKanjiScreenState extends State<MyKanjiScreen> {
       return Center(child: Text("Chưa có kanji nào được lưu.", style: TextStyle(fontSize: 18)));
     }
 
-    return ListView.builder(
-      itemCount: savedKanji.length,
-      itemBuilder: (context, index) {
-        return Card(
-          elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: ListTile(
-            contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            title: Text(savedKanji[index], style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+    return Column(
+      children: [
+        // Checkbox để bật/tắt hiển thị cách đọc và nghĩa
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Checkbox(
+                value: showPronounced,
+                onChanged: (value) {
+                  setState(() {
+                    showPronounced = value!;
+                  });
+                },
+              ),
+              Text("Hiển thị cách đọc"),
+              SizedBox(width: 16),
+              Checkbox(
+                value: showMeaning,
+                onChanged: (value) {
+                  setState(() {
+                    showMeaning = value!;
+                  });
+                },
+              ),
+              Text("Hiển thị nghĩa"),
+            ],
           ),
-        );
-      },
+        ),
+
+        // Danh sách các từ đã lưu
+        Expanded(
+          child: ListView.builder(
+            itemCount: savedKanji.length,
+            itemBuilder: (context, index) {
+              final kanji = savedKanji[index];
+              return Card(
+                elevation: 3,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: ListTile(
+                  contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  title: Text(kanji['kanji'], style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (showPronounced) 
+                        Text('Cách đọc: ${kanji['pronounced']}', style: TextStyle(fontSize: 16, color: Colors.blueAccent)),
+                      if (showMeaning) 
+                        Text('Nghĩa: ${kanji['meaning']}', style: TextStyle(fontSize: 16)),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

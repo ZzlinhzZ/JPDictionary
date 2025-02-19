@@ -26,22 +26,33 @@ class ApiService {
     }
   }
 
-  Future<List<String>> getSavedKanji() async {
-    final response = await http.get(Uri.parse("$baseUrl/saved_kanji"));
-    if (response.statusCode == 200) {
-      return List<String>.from(json.decode(utf8.decode(response.bodyBytes)));  // Sử dụng utf8.decode để đảm bảo mã hóa đúng
-    } else {
-      throw Exception("Failed to load saved kanji");
-    }
-  }
-
-  Future<void> saveKanji(String kanji) async {
-    await http.post(Uri.parse("$baseUrl/saved_kanji"), 
-      body: json.encode({"kanji": kanji}), 
-      headers: {"Content-Type": "application/json"});
+  Future<void> saveKanji(String kanji, String pronounced, String meaning) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/save_kanji"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "kanji": kanji,
+        "pronounced": pronounced,
+        "meaning": meaning,
+      }),
+    );
   }
 
   Future<void> removeKanji(String kanji) async {
-    await http.delete(Uri.parse("$baseUrl/saved_kanji/$kanji"));
+    await http.delete(
+      Uri.parse('$baseUrl/delete_kanji/$kanji'),
+    );
   }
+
+  Future<List<Map<String, dynamic>>> getSavedKanji() async {
+    final response = await http.get(Uri.parse("$baseUrl/saved_kanji"));
+    if (response.statusCode == 200) {
+      List data = json.decode(utf8.decode(response.bodyBytes));  // Giải mã với utf8.decode
+      return List<Map<String, dynamic>>.from(data);
+    } else {
+      return [];
+    }
+  }
+
+
 }
