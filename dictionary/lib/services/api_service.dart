@@ -5,7 +5,8 @@ import '../models/kanji_model.dart';
 
 class ApiService {
 //   static const String baseUrl = "http://127.0.0.1:8000";
-    static const String baseUrl = "http://192.168.1.14:8000";
+    static const String baseUrl = "http://192.168.1.9:8000";
+    // thay 192.168.1.9 bằng địa chỉ Ipv4 trong Wireless LAN adapter Wi-Fi (ipconfig)
   Future<List<Word>> getWords(String query) async {
     final response = await http.get(Uri.parse("$baseUrl/words?search=$query"));
     if (response.statusCode == 200) {

@@ -2,19 +2,49 @@ import 'package:flutter/material.dart';
 import '../models/word_model.dart';
 import '../services/api_service.dart';
 
-class VocabularyScreen extends StatelessWidget {
+class VocabularyScreen extends StatefulWidget {
   final List<Word> words;
   final ApiService apiService = ApiService();
 
   VocabularyScreen({required this.words});
 
-  void _saveWord(String written, String pronounced, String meaning) async {
-    await apiService.saveKanji(written, pronounced, meaning);
+  @override
+  _VocabularyScreenState createState() => _VocabularyScreenState();
+}
+
+class _VocabularyScreenState extends State<VocabularyScreen> {
+  Set<String> savedWords = {}; // Lưu danh sách các từ đã lưu
+
+  @override
+  void initState() {
+    super.initState();
+    loadSavedWords();
+  }
+
+  void loadSavedWords() async {
+    List<Map<String, dynamic>> savedKanjiList = await widget.apiService.getSavedKanji();
+    setState(() {
+      savedWords = savedKanjiList.map((word) => word['kanji'] as String).toSet();
+    });
+  }
+
+  void toggleSaveWord(String written, String pronounced, String meaning) async {
+    if (savedWords.contains(written)) {
+      await widget.apiService.removeKanji(written);
+      setState(() {
+        savedWords.remove(written);
+      });
+    } else {
+      await widget.apiService.saveKanji(written, pronounced, meaning);
+      setState(() {
+        savedWords.add(written);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (words.isEmpty) {
+    if (widget.words.isEmpty) {
       return Center(
         child: Text(
           "Không tìm thấy từ vựng.",
@@ -23,13 +53,12 @@ class VocabularyScreen extends StatelessWidget {
       );
     }
 
-    // Nhóm từ vựng theo `written` và gom cách đọc lại
     Map<String, Map<String, dynamic>> groupedWords = {};
 
-    for (var word in words) {
+    for (var word in widget.words) {
       if (!groupedWords.containsKey(word.written)) {
         groupedWords[word.written] = {
-          'pronounced': <String>{}, // Dùng Set để loại bỏ trùng lặp
+          'pronounced': <String>{},
           'meaning': word.glosses,
         };
       }
@@ -39,7 +68,7 @@ class VocabularyScreen extends StatelessWidget {
     final uniqueWords = groupedWords.entries.map((entry) {
       return {
         'written': entry.key,
-        'pronounced': (entry.value['pronounced'] as Set<String>).join(" | "), // Ghép cách đọc
+        'pronounced': (entry.value['pronounced'] as Set<String>).join(" | "),
         'meaning': entry.value['meaning'],
       };
     }).toList();
@@ -49,6 +78,7 @@ class VocabularyScreen extends StatelessWidget {
       itemCount: uniqueWords.length,
       itemBuilder: (context, index) {
         final word = uniqueWords[index];
+        final isSaved = savedWords.contains(word['written']); // Kiểm tra từ đã lưu chưa
 
         return Card(
           elevation: 3,
@@ -57,7 +87,7 @@ class VocabularyScreen extends StatelessWidget {
             contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             title: Text(
               word['written']!,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'NotoSansCJK'),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -80,9 +110,12 @@ class VocabularyScreen extends StatelessWidget {
               ],
             ),
             trailing: IconButton(
-              icon: Icon(Icons.bookmark_border, color: Colors.blueAccent),
+              icon: Icon(
+                isSaved ? Icons.bookmark : Icons.bookmark_border,
+                color: isSaved ? Colors.blueAccent : Colors.grey,
+              ),
               onPressed: () {
-                _saveWord(word['written']!, word['pronounced']!, word['meaning']!);
+                toggleSaveWord(word['written']!, word['pronounced']!, word['meaning']!);
               },
             ),
           ),
