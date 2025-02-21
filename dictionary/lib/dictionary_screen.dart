@@ -6,6 +6,8 @@ import 'models/kanji_model.dart';
 import 'screens/vocabulary_screen.dart';
 import 'screens/kanji_screen.dart';
 import 'screens/my_kanji_screen.dart';
+import '../widgets/handwriting_canvas.dart';
+import 'dart:convert';
 
 class DictionaryScreen extends StatefulWidget {
   @override
@@ -40,6 +42,7 @@ void search(String query) async {
     _showErrorDialog("Lỗi kết nối API: $e");
   }
 }
+
 
 
   void checkApiConnection() async {
@@ -87,6 +90,62 @@ void search(String query) async {
     );
   }
 
+  void _openHandwritingCanvas() async {
+    String? imageData = await showDialog(
+      context: context,
+      builder: (context) => HandwritingCanvas(
+        onKanjiRecognized: (recognizedKanji) {
+          // Xử lý kết quả nhận diện ở đây
+          print("Kanji nhận diện: $recognizedKanji");
+        },
+      ),
+    );
+
+    if (imageData != null) {
+      _recognizeKanji(imageData);
+    }
+  }
+
+  void _recognizeKanji(String imageData) async {
+    try {
+      final response = await http.post(
+        Uri.parse("http://your-api-url.com/recognize_kanji"), // Cập nhật URL API
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"image": imageData}),
+      );
+
+      if (response.statusCode == 200) {
+        List<dynamic> results = jsonDecode(response.body)["predictions"];
+        _showKanjiResults(results);
+      } else {
+        _showErrorDialog("Lỗi nhận diện Kanji.");
+      }
+    } catch (e) {
+      _showErrorDialog("Lỗi kết nối API: $e");
+    }
+  }
+
+  void _showKanjiResults(List<dynamic> results) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Kanji nhận diện"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: results.map((kanji) {
+            return ListTile(
+              title: Text(kanji),
+              onTap: () {
+                searchController.text = kanji;
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -114,6 +173,10 @@ void search(String query) async {
                   IconButton(
                     icon: Icon(Icons.wifi),
                     onPressed: checkApiConnection, // Nút kiểm tra API
+                  ),
+                  IconButton( // Nút mở khung vẽ Kanji
+                    icon: Icon(Icons.edit),
+                    onPressed: _openHandwritingCanvas,
                   ),
                 ],
               ),

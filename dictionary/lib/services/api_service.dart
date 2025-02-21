@@ -2,6 +2,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/word_model.dart';
 import '../models/kanji_model.dart';
+import 'dart:typed_data';
+
 
 class ApiService {
 //   static const String baseUrl = "http://127.0.0.1:8000";
@@ -55,5 +57,23 @@ class ApiService {
     }
   }
 
+  Future<List<String>> recognizeKanji(Uint8List imageData) async {
+    try {
+      var response = await http.post(
+        Uri.parse("$baseUrl/recognize-kanji"), // Đúng endpoint
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"image": base64Encode(imageData)}),
+      );
 
+      if (response.statusCode == 200) {
+        List<dynamic> results = jsonDecode(utf8.decode(response.bodyBytes))["predictions"];
+        return results.cast<String>();
+      } else {
+        throw Exception("Lỗi API: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Lỗi nhận diện kanji: $e");
+      return [];
+    }
+  }
 }
