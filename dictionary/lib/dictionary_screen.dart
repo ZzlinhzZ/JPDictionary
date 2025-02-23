@@ -95,8 +95,15 @@ void search(String query) async {
       context: context,
       builder: (context) => HandwritingCanvas(
         onKanjiRecognized: (recognizedKanji) {
-          // Xử lý kết quả nhận diện ở đây
-          print("Kanji nhận diện: $recognizedKanji");
+          // Xử lý kết quả nhận diện
+          setState((){
+            // Lấy nội dung hiện có trong ô tìm kiếm
+            String currentText = searchController.text;
+            // Thêm kanji mới vào sau nội dung hiện có
+            searchController.text = currentText + recognizedKanji;
+            // searchController.text = recognizedKanji;
+          });
+          search(searchController.text);
         },
       ),
     );
