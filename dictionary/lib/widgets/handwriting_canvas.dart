@@ -83,8 +83,8 @@ Future<ByteData?> _convertToWhiteBackground(ui.Image image) async {
             return GestureDetector(
               onTap: () {
                 widget.onKanjiRecognized(kanji);
-                Navigator.pop(context);
-                Navigator.pop(context);
+                Navigator.pop(context); // đóng danh sách kanji recommend
+                // Navigator.pop(context); // đóng cửa sổ vẽ kanji
               },
               child: Padding(
                 padding: EdgeInsets.all(8.0),
@@ -96,7 +96,30 @@ Future<ByteData?> _convertToWhiteBackground(ui.Image image) async {
       ),
     );
   }
+void _undoLastStroke() {
+  if (_points.isEmpty) return;
 
+  setState(() {
+    // Tìm vị trí của null cuối cùng
+    int lastNullIndex = _points.lastIndexOf(null);
+
+    if (lastNullIndex != -1) {
+      // Nếu có null cuối cùng, xóa từ null cuối cùng đến hết (bao gồm cả null)
+      _points.removeRange(lastNullIndex, _points.length);
+
+      // Nếu còn điểm trước null cuối cùng, xóa nét vẽ đó
+      if (lastNullIndex > 0) {
+        // Tìm null trước đó để xác định nét vẽ cần xóa
+        int previousNullIndex = _points.sublist(0, lastNullIndex).lastIndexOf(null);
+        int startIndex = (previousNullIndex != -1) ? previousNullIndex + 1 : 0;
+        _points.removeRange(startIndex, lastNullIndex);
+      }
+    } else {
+      // Nếu không có null nào, xóa toàn bộ
+      _points.clear();
+    }
+  });
+}
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -136,12 +159,17 @@ Future<ByteData?> _convertToWhiteBackground(ui.Image image) async {
                   children: [
                     ElevatedButton(
                       onPressed: _clearCanvas,
-                      child: Text("Xóa"),
+                      child: Text("Delete"),
+                    ),
+                    SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: _undoLastStroke,
+                      child: Text("Undo"),
                     ),
                     SizedBox(width: 10),
                     ElevatedButton(
                       onPressed: _saveAndSendToAPI,
-                      child: Text("Gửi"),
+                      child: Text("Send"),
                     ),
                   ],
                 ),
