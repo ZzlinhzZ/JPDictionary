@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../database_helper.dart';
-import '../models/WordModel.dart';
+import '../services/api_service.dart';
+import 'quiz_screen.dart';
 
 class MyKanjiScreen extends StatefulWidget {
   @override
@@ -8,8 +8,9 @@ class MyKanjiScreen extends StatefulWidget {
 }
 
 class _MyKanjiScreenState extends State<MyKanjiScreen> {
-  List<Word> savedWords = [];
-  bool showPronunciation = true;
+  ApiService apiService = ApiService();
+  List<Map<String, dynamic>> savedKanji = [];
+  bool showPronounced = true;
   bool showMeaning = true;
 
   @override
@@ -19,93 +20,80 @@ class _MyKanjiScreenState extends State<MyKanjiScreen> {
   }
 
   void loadSavedKanji() async {
-    final dbHelper = DatabaseHelper();
-    final savedList = await dbHelper.getSavedKanji();
-
+    List<Map<String, dynamic>> kanjiList = await apiService.getSavedKanji();
     setState(() {
-      savedWords = savedList
-          .map((kanji) => Word(
-                id: kanji.id ?? 0,
-                written: kanji.kanji,
-                pronounced: kanji.pronounced,
-                glosses: kanji.meaning,
-                kanji: '',
-              ))
-          .toList();
+      savedKanji = kanjiList;
     });
+  }
+
+  void startQuiz() {
+    if (savedKanji.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => QuizScreen()),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Thanh chọn checkbox
         Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Checkbox(
-                value: showPronunciation,
-                onChanged: (value) {
-                  setState(() {
-                    showPronunciation = value!;
-                  });
-                },
-              ),
-              Text("Cách đọc"),
-              SizedBox(width: 20),
-              Checkbox(
-                value: showMeaning,
-                onChanged: (value) {
-                  setState(() {
-                    showMeaning = value!;
-                  });
-                },
-              ),
-              Text("Ý nghĩa"),
-            ],
+          padding: EdgeInsets.all(8.0),
+          child: ElevatedButton(
+            onPressed: savedKanji.isNotEmpty ? startQuiz : null,
+            child: Text("Bắt đầu Quiz"),
           ),
         ),
-        // Danh sách Kanji đã lưu
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Checkbox(
+              value: showPronounced,
+              onChanged: (value) {
+                setState(() {
+                  showPronounced = value!;
+                });
+              },
+            ),
+            Text("Hiển thị cách đọc"),
+            SizedBox(width: 16),
+            Checkbox(
+              value: showMeaning,
+              onChanged: (value) {
+                setState(() {
+                  showMeaning = value!;
+                });
+              },
+            ),
+            Text("Hiển thị nghĩa"),
+          ],
+        ),
         Expanded(
-          child: ListView.builder(
-            itemCount: savedWords.length,
-            itemBuilder: (context, index) {
-              final word = savedWords[index];
-
-              return Card(
-                margin: EdgeInsets.all(8),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Hiển thị Kanji
-                      Text(
-                        word.written,
-                        style: TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.bold),
+          child: savedKanji.isEmpty
+              ? Center(child: Text("Chưa có kanji nào được lưu.", style: TextStyle(fontSize: 18)))
+              : ListView.builder(
+                  itemCount: savedKanji.length,
+                  itemBuilder: (context, index) {
+                    final kanji = savedKanji[index];
+                    return Card(
+                      elevation: 3,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: ListTile(
+                        contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        title: Text(kanji['kanji'], style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (showPronounced) Text('Cách đọc: ${kanji['pronounced']}'),
+                            if (showMeaning) Text('Nghĩa: ${kanji['meaning']}'),
+                          ],
+                        ),
                       ),
-                      // Hiển thị cách đọc (nếu được chọn)
-                      if (showPronunciation)
-                        Text(
-                          '「${word.pronounced}」',
-                          style:
-                              TextStyle(fontSize: 18, color: Colors.blueAccent),
-                        ),
-                      // Hiển thị nghĩa (nếu được chọn)
-                      if (showMeaning)
-                        Text(
-                          word.glosses,
-                          style: TextStyle(fontSize: 16),
-                        ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
       ],
     );

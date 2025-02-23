@@ -1,20 +1,20 @@
-import 'package:dictionary/models/SavedKanjiModel.dart';
 import 'package:flutter/material.dart';
-import '../models/KanjiModel.dart';
-import '../database_helper.dart';
+import '../models/kanji_model.dart';
+import '../services/api_service.dart';
 
 class KanjiScreen extends StatefulWidget {
   final List<Kanji> kanjiList;
+  final String searchQuery;
 
-  KanjiScreen({required this.kanjiList});
+  KanjiScreen({required this.kanjiList, required this.searchQuery});
 
   @override
   _KanjiScreenState createState() => _KanjiScreenState();
 }
 
 class _KanjiScreenState extends State<KanjiScreen> {
-  final DatabaseHelper dbHelper = DatabaseHelper();
-  Set<String> savedKanji = {};
+  ApiService apiService = ApiService();
+  Set<String> savedKanji = {}; // Lưu danh sách các kanji đã lưu
 
   @override
   void initState() {
@@ -23,77 +23,67 @@ class _KanjiScreenState extends State<KanjiScreen> {
   }
 
   void loadSavedKanji() async {
-    final savedList = await dbHelper.getSavedKanji();
+    List<Map<String, dynamic>> savedKanjiList = await apiService.getSavedKanji();
     setState(() {
-      savedKanji =
-          savedList.map((item) => item.kanji).toSet(); // Chỉ lấy giá trị kanji
+      savedKanji = savedKanjiList.map((kanji) => kanji['kanji'] as String).toSet();
     });
   }
 
-  void toggleSave(Kanji kanji) async {
+  void toggleSaveKanji(Kanji kanji) async {
     if (savedKanji.contains(kanji.kanji)) {
-      final dbHelper = DatabaseHelper();
-      final savedList = await dbHelper.getSavedKanji();
-      final savedItem = savedList.firstWhere(
-          (item) => item.kanji == kanji.kanji,
-          orElse: () =>
-              SavedKanji(id: -1, kanji: '', pronounced: '', meaning: ''));
-      if (savedItem.id != -1) {
-        await dbHelper.removeKanji(savedItem.id!);
+      await apiService.removeKanji(kanji.kanji);
+      setState(() {
         savedKanji.remove(kanji.kanji);
-      }
+      });
     } else {
-      await dbHelper.saveKanji(SavedKanji(
-        kanji: kanji.kanji,
-        pronounced: kanji.kunReadings ?? '',
-        meaning: kanji.meanings ?? '',
-      ));
-      savedKanji.add(kanji.kanji);
+      await apiService.saveKanji(kanji.kanji, kanji.kunReadings ?? "", kanji.meanings ?? "");
+      setState(() {
+        savedKanji.add(kanji.kanji);
+      });
     }
-    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.kanjiList.isEmpty) {
-      return Center(
-          child:
-              Text("Không tìm thấy hán tự.", style: TextStyle(fontSize: 18)));
+    List<String> queryKanji = widget.searchQuery.split(''); // Chia từ khóa thành từng kanji riêng biệt
+    final filteredKanjiList = widget.kanjiList.where((kanji) {
+      return queryKanji.contains(kanji.kanji);
+    }).toList();
+
+    if (filteredKanjiList.isEmpty) {
+      return Center(child: Text("Không tìm thấy hán tự.", style: TextStyle(fontSize: 18)));
     }
 
     return ListView.builder(
       padding: EdgeInsets.all(8),
-      itemCount: widget.kanjiList.length,
+      itemCount: filteredKanjiList.length,
       itemBuilder: (context, index) {
-        final kanji = widget.kanjiList[index];
-        bool isSaved = savedKanji.contains(kanji.kanji);
+        final kanji = filteredKanjiList[index];
+        final isSaved = savedKanji.contains(kanji.kanji); // Kiểm tra kanji đã lưu chưa
+
         return Card(
           elevation: 3,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ListTile(
             contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            title: Text(kanji.kanji,
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+            title: Text(kanji.kanji, style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: 4),
-                Text('Nghĩa: ${kanji.meanings}',
-                    style: TextStyle(fontSize: 16)),
-                SizedBox(height: 4),
-                Text('Âm Kun: ${kanji.kunReadings}',
-                    style: TextStyle(fontSize: 16)),
-                Text('Âm On: ${kanji.onReadings}',
-                    style: TextStyle(fontSize: 16)),
-                Text('Số nét: ${kanji.strokeCount}',
-                    style: TextStyle(fontSize: 16)),
+                Text('Nghĩa: ${kanji.meanings ?? "Không có"}'),
+                Text('Âm Kun: ${kanji.kunReadings ?? "Không có"}'),
+                Text('Âm On: ${kanji.onReadings ?? "Không có"}'),
+                Text('Số nét: ${kanji.strokeCount}'),
               ],
             ),
             trailing: IconButton(
-              icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border,
-                  color: isSaved ? Colors.blue : Colors.grey),
-              onPressed: () => toggleSave(kanji),
+              icon: Icon(
+                isSaved ? Icons.bookmark : Icons.bookmark_border,
+                color: isSaved ? Colors.blueAccent : Colors.grey,
+              ),
+              onPressed: () {
+                toggleSaveKanji(kanji);
+              },
             ),
           ),
         );

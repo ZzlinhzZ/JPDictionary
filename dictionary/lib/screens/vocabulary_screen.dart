@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../models/SavedKanjiModel.dart';
-import '../models/WordModel.dart';
-import '../database_helper.dart';
+import '../models/word_model.dart';
+import '../services/api_service.dart';
 
 class VocabularyScreen extends StatefulWidget {
   final List<Word> words;
+  final ApiService apiService = ApiService();
 
   VocabularyScreen({required this.words});
 
@@ -13,109 +13,114 @@ class VocabularyScreen extends StatefulWidget {
 }
 
 class _VocabularyScreenState extends State<VocabularyScreen> {
-  final DatabaseHelper dbHelper = DatabaseHelper();
-  Set<String> savedKanji = {};
+  Set<String> savedWords = {}; // Lưu danh sách các từ đã lưu
 
   @override
   void initState() {
     super.initState();
-    loadSavedKanji();
+    loadSavedWords();
   }
 
-  void loadSavedKanji() async {
-    final savedList = await dbHelper.getSavedKanji();
+  void loadSavedWords() async {
+    List<Map<String, dynamic>> savedKanjiList = await widget.apiService.getSavedKanji();
     setState(() {
-      savedKanji =
-          savedList.map((item) => item.kanji).toSet(); // Chỉ lấy giá trị kanji
+      savedWords = savedKanjiList.map((word) => word['kanji'] as String).toSet();
     });
   }
 
-  void toggleSave(Word word) async {
-    if (savedKanji.contains(word.written)) {
-      final dbHelper = DatabaseHelper();
-      final savedList = await dbHelper.getSavedKanji();
-      final savedItem = savedList.firstWhere(
-          (item) => item.kanji == word.written,
-          orElse: () =>
-              SavedKanji(id: -1, kanji: '', pronounced: '', meaning: ''));
-      if (savedItem.id != -1) {
-        await dbHelper.removeKanji(savedItem.id!);
-        savedKanji.remove(word.written);
-      }
+  void toggleSaveWord(String written, String pronounced, String meaning) async {
+    if (savedWords.contains(written)) {
+      await widget.apiService.removeKanji(written);
+      setState(() {
+        savedWords.remove(written);
+      });
     } else {
-      await dbHelper.saveKanji(SavedKanji(
-        kanji: word.written,
-        pronounced: word.pronounced,
-        meaning: word.glosses,
-      ));
-      savedKanji.add(word.written);
+      await widget.apiService.saveKanji(written, pronounced, meaning);
+      setState(() {
+        savedWords.add(written);
+      });
     }
-    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.words.isEmpty) {
       return Center(
-          child:
-              Text("Không tìm thấy từ vựng.", style: TextStyle(fontSize: 18)));
+        child: Text(
+          "Không tìm thấy từ vựng.",
+          style: TextStyle(fontSize: 18),
+        ),
+      );
     }
 
-    Map<String, Set<String>> wordMap = {};
-    Map<String, String> wordMeanings = {};
+    Map<String, Map<String, dynamic>> groupedWords = {};
 
     for (var word in widget.words) {
-      if (!wordMap.containsKey(word.written)) {
-        wordMap[word.written] = {};
-        wordMeanings[word.written] = word.glosses;
+      if (!groupedWords.containsKey(word.written)) {
+        groupedWords[word.written] = {
+          'pronounced': <String>{},
+          'meaning': word.glosses,
+        };
       }
-      wordMap[word.written]!.add(word.pronounced);
+      groupedWords[word.written]!['pronounced'].add(word.pronounced);
     }
 
-    return ListView(
+    final uniqueWords = groupedWords.entries.map((entry) {
+      return {
+        'written': entry.key,
+        'pronounced': (entry.value['pronounced'] as Set<String>).join(" | "),
+        'meaning': entry.value['meaning'],
+      };
+    }).toList();
+
+    return ListView.builder(
       padding: EdgeInsets.all(8),
-      children: wordMap.entries.map((entry) {
-        String written = entry.key;
-        String readings = entry.value.join(" | ");
-        String glosses = wordMeanings[written] ?? "";
-        bool isSaved = savedKanji.contains(written);
+      itemCount: uniqueWords.length,
+      itemBuilder: (context, index) {
+        final word = uniqueWords[index];
+        final isSaved = savedWords.contains(word['written']); // Kiểm tra từ đã lưu chưa
 
         return Card(
           elevation: 3,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ListTile(
             contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            title: Text(written,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            title: Text(
+              word['written']!,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    Icon(Icons.hearing, color: Colors.blueAccent, size: 18),
+                    SizedBox(width: 4),
+                    Text(
+                      'Cách đọc: ${word['pronounced']}',
+                      style: TextStyle(fontSize: 16, color: Colors.blueAccent),
+                    ),
+                  ],
+                ),
                 SizedBox(height: 4),
-                Text('Cách đọc: $readings',
-                    style: TextStyle(fontSize: 16, color: Colors.blueAccent)),
-                SizedBox(height: 4),
-                Text('Nghĩa: $glosses', style: TextStyle(fontSize: 16)),
+                Text(
+                  'Nghĩa: ${word['meaning']}',
+                  style: TextStyle(fontSize: 16),
+                ),
               ],
             ),
             trailing: IconButton(
-              icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border,
-                  color: isSaved ? Colors.blue : Colors.grey),
+              icon: Icon(
+                isSaved ? Icons.bookmark : Icons.bookmark_border,
+                color: isSaved ? Colors.blueAccent : Colors.grey,
+              ),
               onPressed: () {
-                final word = widget.words.firstWhere(
-                    (w) => w.written == written,
-                    orElse: () => Word(
-                        id: 0,
-                        written: written,
-                        pronounced: '',
-                        glosses: '',
-                        kanji: ''));
-                toggleSave(word);
+                toggleSaveWord(word['written']!, word['pronounced']!, word['meaning']!);
               },
             ),
           ),
         );
-      }).toList(),
+      },
     );
   }
 }
