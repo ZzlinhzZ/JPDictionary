@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'package:flutter/rendering.dart';
-// import 'dart:html' as html;
 
 class HandwritingCanvas extends StatefulWidget {
   final Function(String) onKanjiRecognized;
@@ -19,107 +18,94 @@ class _HandwritingCanvasState extends State<HandwritingCanvas> {
   GlobalKey _canvasKey = GlobalKey();
   bool _isLoading = false;
   final ApiService apiService = ApiService();
+  List<String> _recognizedKanji = []; // Danh sách kết quả nhận diện
 
   void _clearCanvas() {
     setState(() {
       _points.clear();
+      _recognizedKanji.clear(); // Xóa kết quả nhận diện khi xóa canvas
     });
   }
 
-Future<void> _saveAndSendToAPI() async {
-  setState(() {
-    _isLoading = true;
-  });
+  Future<void> _sendToAPI() async {
+    if (_points.isEmpty) return;
 
-  RenderRepaintBoundary boundary =
-      _canvasKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-  ui.Image image = await boundary.toImage();
-  ByteData? byteData = await _convertToWhiteBackground(image);
-  Uint8List pngBytes = byteData!.buffer.asUint8List();
+    setState(() {
+      _isLoading = true;
+    });
 
-  // Tải ảnh xuống trình duyệt
-  // final blob = html.Blob([pngBytes]);
-  // final url = html.Url.createObjectUrlFromBlob(blob);
-  // final anchor = html.AnchorElement(href: url)
-  //   ..setAttribute("download", "kanji_drawing.png")
-  //   ..click();
-  // html.Url.revokeObjectUrl(url);
+    try {
+      // Chuyển canvas thành ảnh PNG
+      RenderRepaintBoundary boundary =
+          _canvasKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage();
+      ByteData? byteData = await _convertToWhiteBackground(image);
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
 
-  // print("🖼 Ảnh đã tải xuống: kanji_drawing.png");
+      // Gửi ảnh đến API để nhận diện
+      List<String> recognizedKanji = await apiService.recognizeKanji(pngBytes);
 
-  //  Gửi ảnh đến API để nhận diện
-  List<String> recognizedKanji = await apiService.recognizeKanji(pngBytes);
-
-  setState(() {
-    _isLoading = false;
-  });
-
-  _showKanjiOptions(recognizedKanji);
-}
-
-Future<ByteData?> _convertToWhiteBackground(ui.Image image) async {
-  final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()));
-
-  //  Vẽ nền trắng
-  Paint whitePaint = Paint()..color = Colors.white;
-  canvas.drawRect(Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()), whitePaint);
-
-  // Vẽ lại ảnh gốc (nét đen)
-  Paint paint = Paint();
-  canvas.drawImage(image, Offset.zero, paint);
-
-  final newImage = await recorder.endRecording().toImage(image.width, image.height);
-  return await newImage.toByteData(format: ui.ImageByteFormat.png);
-}
-
-  void _showKanjiOptions(List<String> kanjiList) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Chọn Kanji"),
-        content: Wrap(
-          children: kanjiList.map((kanji) {
-            return GestureDetector(
-              onTap: () {
-                widget.onKanjiRecognized(kanji);
-                Navigator.pop(context); // đóng danh sách kanji recommend
-                // Navigator.pop(context); // đóng cửa sổ vẽ kanji
-              },
-              child: Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Text(kanji, style: TextStyle(fontSize: 24)),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-void _undoLastStroke() {
-  if (_points.isEmpty) return;
-
-  setState(() {
-    // Tìm vị trí của null cuối cùng
-    int lastNullIndex = _points.lastIndexOf(null);
-
-    if (lastNullIndex != -1) {
-      // Nếu có null cuối cùng, xóa từ null cuối cùng đến hết (bao gồm cả null)
-      _points.removeRange(lastNullIndex, _points.length);
-
-      // Nếu còn điểm trước null cuối cùng, xóa nét vẽ đó
-      if (lastNullIndex > 0) {
-        // Tìm null trước đó để xác định nét vẽ cần xóa
-        int previousNullIndex = _points.sublist(0, lastNullIndex).lastIndexOf(null);
-        int startIndex = (previousNullIndex != -1) ? previousNullIndex + 1 : 0;
-        _points.removeRange(startIndex, lastNullIndex);
-      }
-    } else {
-      // Nếu không có null nào, xóa toàn bộ
-      _points.clear();
+      setState(() {
+        _recognizedKanji = recognizedKanji; // Cập nhật kết quả nhận diện
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Lỗi khi nhận diện Kanji: $e")),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
-  });
-}
+  }
+
+  Future<ByteData?> _convertToWhiteBackground(ui.Image image) async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(
+      recorder,
+      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+    );
+
+    // Vẽ nền trắng
+    Paint whitePaint = Paint()..color = Colors.white;
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      whitePaint,
+    );
+
+    // Vẽ lại ảnh gốc (nét đen)
+    Paint paint = Paint();
+    canvas.drawImage(image, Offset.zero, paint);
+
+    final newImage = await recorder.endRecording().toImage(image.width, image.height);
+    return await newImage.toByteData(format: ui.ImageByteFormat.png);
+  }
+
+  void _undoLastStroke() {
+    if (_points.isEmpty) return;
+
+    setState(() {
+      int lastNullIndex = _points.lastIndexOf(null);
+
+      if (lastNullIndex != -1) {
+        _points.removeRange(lastNullIndex, _points.length);
+
+        if (lastNullIndex > 0) {
+          int previousNullIndex = _points.sublist(0, lastNullIndex).lastIndexOf(null);
+          int startIndex = (previousNullIndex != -1) ? previousNullIndex + 1 : 0;
+          _points.removeRange(startIndex, lastNullIndex);
+        }
+      } else {
+        _points.clear();
+      }
+    });
+
+    // Đảm bảo UI đã được cập nhật trước khi gửi ảnh lên server
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sendToAPI();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -127,6 +113,22 @@ void _undoLastStroke() {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Hiển thị kết quả nhận diện
+          if (_recognizedKanji.isNotEmpty)
+            Wrap(
+              children: _recognizedKanji.map((kanji) {
+                return GestureDetector(
+                  onTap: () {
+                    widget.onKanjiRecognized(kanji); // Gọi callback khi chọn Kanji
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text(kanji, style: TextStyle(fontSize: 24)),
+                  ),
+                );
+              }).toList(),
+            ),
+          SizedBox(height: 10),
           RepaintBoundary(
             key: _canvasKey,
             child: Container(
@@ -143,7 +145,12 @@ void _undoLastStroke() {
                     _points.add(localPosition);
                   });
                 },
-                onPanEnd: (details) => _points.add(null),
+                onPanEnd: (details) {
+                  setState(() {
+                    _points.add(null); // Kết thúc nét vẽ
+                  });
+                  _sendToAPI(); // Gửi ảnh lên server khi kết thúc nét vẽ
+                },
                 child: CustomPaint(
                   painter: _KanjiPainter(_points),
                   size: Size(300, 300),
@@ -165,11 +172,6 @@ void _undoLastStroke() {
                     ElevatedButton(
                       onPressed: _undoLastStroke,
                       child: Text("Undo"),
-                    ),
-                    SizedBox(width: 10),
-                    ElevatedButton(
-                      onPressed: _saveAndSendToAPI,
-                      child: Text("Send"),
                     ),
                   ],
                 ),
