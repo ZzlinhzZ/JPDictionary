@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/word_model.dart';
 import '../services/api_service.dart';
+import 'login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class VocabularyScreen extends StatefulWidget {
   final List<Word> words;
@@ -14,7 +16,8 @@ class VocabularyScreen extends StatefulWidget {
 
 class _VocabularyScreenState extends State<VocabularyScreen> {
   Set<String> savedWords = {}; // Lưu danh sách các từ đã lưu
-
+  String? username;
+  ApiService apiService = ApiService();
   @override
   void initState() {
     super.initState();
@@ -22,13 +25,32 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
   }
 
   void loadSavedWords() async {
-    List<Map<String, dynamic>> savedKanjiList = await widget.apiService.getSavedKanji();
+    List<Map<String, dynamic>> savedKanjiList =
+        await widget.apiService.getSavedKanji();
     setState(() {
-      savedWords = savedKanjiList.map((word) => word['kanji'] as String).toSet();
+      savedWords =
+          savedKanjiList.map((word) => word['kanji'] as String).toSet();
+    });
+  }
+
+  Future<void> checkLoginStatus() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      username = prefs.getString("username");
     });
   }
 
   void toggleSaveWord(String written, String pronounced, String meaning) async {
+    if (username == null) {
+      bool? result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+      );
+      if (result == true) {
+        checkLoginStatus();
+      }
+      return;
+    }
     if (savedWords.contains(written)) {
       await widget.apiService.removeKanji(written);
       setState(() {
@@ -78,11 +100,13 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
       itemCount: uniqueWords.length,
       itemBuilder: (context, index) {
         final word = uniqueWords[index];
-        final isSaved = savedWords.contains(word['written']); // Kiểm tra từ đã lưu chưa
+        final isSaved =
+            savedWords.contains(word['written']); // Kiểm tra từ đã lưu chưa
 
         return Card(
           elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ListTile(
             contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             title: Text(
@@ -115,7 +139,8 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                 color: isSaved ? Colors.blueAccent : Colors.grey,
               ),
               onPressed: () {
-                toggleSaveWord(word['written']!, word['pronounced']!, word['meaning']!);
+                toggleSaveWord(
+                    word['written']!, word['pronounced']!, word['meaning']!);
               },
             ),
           ),

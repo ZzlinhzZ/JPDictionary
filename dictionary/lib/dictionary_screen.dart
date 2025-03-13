@@ -8,6 +8,8 @@ import 'screens/kanji_screen.dart';
 import 'screens/my_kanji_screen.dart';
 import '../widgets/handwriting_canvas.dart';
 import 'dart:convert';
+import '../screens/login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DictionaryScreen extends StatefulWidget {
   @override
@@ -19,39 +21,53 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   List<Word> wordResults = [];
   List<Kanji> kanjiResults = [];
   TextEditingController searchController = TextEditingController();
+  String? username;
 
-void search(String query) async {
-  if (query.isEmpty) {
-    setState(() {
-      wordResults.clear();
-      kanjiResults.clear();
-    });
-    return;
+  @override
+  void initState() {
+    super.initState();
+    checkLoginStatus();
   }
 
-  try {
-    // Gửi từ khóa vào API để tìm kiếm
-    List<Word> words = await apiService.getWords(query);
-    List<Kanji> kanji = await apiService.getKanji(query);
-
+  void checkLoginStatus() async {
+    bool loggedIn = await apiService.isLoggedIn();
     setState(() {
-      wordResults = words;
-      kanjiResults = kanji;
+      isLoggedIn = loggedIn;
     });
-  } catch (e) {
-    _showErrorDialog("Lỗi kết nối API: $e");
   }
-}
 
+  void search(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        wordResults.clear();
+        kanjiResults.clear();
+      });
+      return;
+    }
 
+    try {
+      // Gửi từ khóa vào API để tìm kiếm
+      List<Word> words = await apiService.getWords(query);
+      List<Kanji> kanji = await apiService.getKanji(query);
+
+      setState(() {
+        wordResults = words;
+        kanjiResults = kanji;
+      });
+    } catch (e) {
+      _showErrorDialog("Lỗi kết nối API: $e");
+    }
+  }
 
   void checkApiConnection() async {
     try {
-      final response = await http.get(Uri.parse("${ApiService.baseUrl}/words?search=test"));
+      final response =
+          await http.get(Uri.parse("${ApiService.baseUrl}/words?search=test"));
       if (response.statusCode == 200) {
         _showSuccessDialog("API kết nối thành công!");
       } else {
-        _showErrorDialog("Lỗi: API phản hồi với mã trạng thái ${response.statusCode}");
+        _showErrorDialog(
+            "Lỗi: API phản hồi với mã trạng thái ${response.statusCode}");
       }
     } catch (e) {
       _showErrorDialog("Không thể kết nối API: $e");
@@ -96,7 +112,7 @@ void search(String query) async {
       builder: (context) => HandwritingCanvas(
         onKanjiRecognized: (recognizedKanji) {
           // Xử lý kết quả nhận diện
-          setState((){
+          setState(() {
             // Lấy nội dung hiện có trong ô tìm kiếm
             String currentText = searchController.text;
             // Thêm kanji mới vào sau nội dung hiện có
@@ -116,7 +132,8 @@ void search(String query) async {
   void _recognizeKanji(String imageData) async {
     try {
       final response = await http.post(
-        Uri.parse("http://your-api-url.com/recognize_kanji"), // Cập nhật URL API
+        Uri.parse(
+            "http://your-api-url.com/recognize_kanji"), // Cập nhật URL API
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"image": imageData}),
       );
@@ -153,6 +170,24 @@ void search(String query) async {
     );
   }
 
+  void _openLoginScreen() async {
+    bool? result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+    );
+
+    if (result == true) {
+      checkLoginStatus();
+    }
+  }
+
+  void _logout() async {
+    await apiService.logout();
+    setState(() {
+      username = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -163,16 +198,45 @@ void search(String query) async {
               padding: EdgeInsets.all(8.0),
               child: Row(
                 children: [
+                  PopupMenuButton(
+                    icon: Icon(Icons.person),
+                    onSelected: (value) async {
+                      if (value == 'logout') {
+                        await apiService.logout();
+                        setState(() {}); // Cập nhật giao diện
+                      } else if (value == 'login') {
+                        bool? loggedIn = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => LoginScreen()),
+                        );
+
+                        if (loggedIn == true) {
+                          setState(
+                              () {}); // Cập nhật giao diện sau khi đăng nhập
+                        }
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: apiService.isLoggedIn() ? 'logout' : 'login',
+                        child: Text(apiService.isLoggedIn()
+                            ? "Đăng xuất"
+                            : "Đăng nhập"),
+                      ),
+                    ],
+                  ),
                   Expanded(
                     child: TextField(
                       controller: searchController,
                       onChanged: search,
-                      onSubmitted: (query){
+                      onSubmitted: (query) {
                         search(query);
                       },
                       decoration: InputDecoration(
                         hintText: "Nhập từ khóa...",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         prefixIcon: Icon(Icons.search),
                       ),
                     ),
@@ -181,7 +245,8 @@ void search(String query) async {
                     icon: Icon(Icons.wifi),
                     onPressed: checkApiConnection, // Nút kiểm tra API
                   ),
-                  IconButton( // Nút mở khung vẽ Kanji
+                  IconButton(
+                    // Nút mở khung vẽ Kanji
                     icon: Icon(Icons.edit),
                     onPressed: _openHandwritingCanvas,
                   ),
@@ -206,7 +271,9 @@ void search(String query) async {
                           VocabularyScreen(words: wordResults),
                           // KanjiScreen(kanjiList: kanjiResults),
                           // KanjiScreen(kanjiList: kanjiResults, searchQuery: searchController.text),
-                          KanjiScreen(kanjiList: kanjiResults, searchQuery: searchController.text),
+                          KanjiScreen(
+                              kanjiList: kanjiResults,
+                              searchQuery: searchController.text),
                           MyKanjiScreen(),
                         ],
                       ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/kanji_model.dart';
 import '../services/api_service.dart';
+import 'login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class KanjiScreen extends StatefulWidget {
   final List<Kanji> kanjiList;
@@ -15,28 +17,50 @@ class KanjiScreen extends StatefulWidget {
 class _KanjiScreenState extends State<KanjiScreen> {
   ApiService apiService = ApiService();
   Set<String> savedKanji = {}; // Lưu danh sách các kanji đã lưu
+  String? username;
 
   @override
   void initState() {
     super.initState();
+    checkLoginStatus();
     loadSavedKanji();
   }
 
-  void loadSavedKanji() async {
-    List<Map<String, dynamic>> savedKanjiList = await apiService.getSavedKanji();
+  Future<void> checkLoginStatus() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      savedKanji = savedKanjiList.map((kanji) => kanji['kanji'] as String).toSet();
+      username = prefs.getString("username");
+    });
+  }
+
+  void loadSavedKanji() async {
+    List<Map<String, dynamic>> savedKanjiList =
+        await apiService.getSavedKanji();
+    setState(() {
+      savedKanji =
+          savedKanjiList.map((kanji) => kanji['kanji'] as String).toSet();
     });
   }
 
   void toggleSaveKanji(Kanji kanji) async {
+    if (username == null) {
+      bool? result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+      );
+      if (result == true) {
+        checkLoginStatus();
+      }
+      return;
+    }
     if (savedKanji.contains(kanji.kanji)) {
       await apiService.removeKanji(kanji.kanji);
       setState(() {
         savedKanji.remove(kanji.kanji);
       });
     } else {
-      await apiService.saveKanji(kanji.kanji, kanji.kunReadings ?? "", kanji.meanings ?? "");
+      await apiService.saveKanji(
+          kanji.kanji, kanji.kunReadings ?? "", kanji.meanings ?? "");
       setState(() {
         savedKanji.add(kanji.kanji);
       });
@@ -45,13 +69,16 @@ class _KanjiScreenState extends State<KanjiScreen> {
 
   @override
   Widget build(BuildContext context) {
-    List<String> queryKanji = widget.searchQuery.split(''); // Chia từ khóa thành từng kanji riêng biệt
+    List<String> queryKanji = widget.searchQuery
+        .split(''); // Chia từ khóa thành từng kanji riêng biệt
     final filteredKanjiList = widget.kanjiList.where((kanji) {
       return queryKanji.contains(kanji.kanji);
     }).toList();
 
     if (filteredKanjiList.isEmpty) {
-      return Center(child: Text("Không tìm thấy hán tự.", style: TextStyle(fontSize: 18)));
+      return Center(
+          child:
+              Text("Không tìm thấy hán tự.", style: TextStyle(fontSize: 18)));
     }
 
     return ListView.builder(
@@ -59,14 +86,17 @@ class _KanjiScreenState extends State<KanjiScreen> {
       itemCount: filteredKanjiList.length,
       itemBuilder: (context, index) {
         final kanji = filteredKanjiList[index];
-        final isSaved = savedKanji.contains(kanji.kanji); // Kiểm tra kanji đã lưu chưa
+        final isSaved =
+            savedKanji.contains(kanji.kanji); // Kiểm tra kanji đã lưu chưa
 
         return Card(
           elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ListTile(
             contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            title: Text(kanji.kanji, style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+            title: Text(kanji.kanji,
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
