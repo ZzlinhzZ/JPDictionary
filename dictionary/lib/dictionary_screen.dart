@@ -20,41 +20,40 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   List<Kanji> kanjiResults = [];
   TextEditingController searchController = TextEditingController();
 
-void search(String query) async {
-  if (query.isEmpty) {
-    setState(() {
-      wordResults.clear();
-      kanjiResults.clear();
-    });
-    return;
+  void search(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        wordResults.clear();
+        kanjiResults.clear();
+      });
+      return;
+    }
+
+    try {
+      // Gửi từ khóa vào API để tìm kiếm
+      List<Word> words = await apiService.getWords(query);
+      List<Kanji> kanji = await apiService.getKanji(query);
+
+      setState(() {
+        wordResults = words;
+        kanjiResults = kanji;
+      });
+    } catch (e) {
+      _showErrorDialog("Error connect to API: $e");
+    }
   }
-
-  try {
-    // Gửi từ khóa vào API để tìm kiếm
-    List<Word> words = await apiService.getWords(query);
-    List<Kanji> kanji = await apiService.getKanji(query);
-
-    setState(() {
-      wordResults = words;
-      kanjiResults = kanji;
-    });
-  } catch (e) {
-    _showErrorDialog("Lỗi kết nối API: $e");
-  }
-}
-
-
 
   void checkApiConnection() async {
     try {
-      final response = await http.get(Uri.parse("${ApiService.baseUrl}/words?search=test"));
+      final response =
+          await http.get(Uri.parse("${ApiService.baseUrl}/words?search=test"));
       if (response.statusCode == 200) {
-        _showSuccessDialog("API kết nối thành công!");
+        _showSuccessDialog("API connected successfully!");
       } else {
-        _showErrorDialog("Lỗi: API phản hồi với mã trạng thái ${response.statusCode}");
+        _showErrorDialog("Error connecting to API: ${response.statusCode}");
       }
     } catch (e) {
-      _showErrorDialog("Không thể kết nối API: $e");
+      _showErrorDialog("Cannot connect to API: $e");
     }
   }
 
@@ -62,7 +61,7 @@ void search(String query) async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Thành công"),
+        title: Text("Success"),
         content: Text(message),
         actions: [
           TextButton(
@@ -78,7 +77,7 @@ void search(String query) async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Lỗi"),
+        title: Text("Error"),
         content: Text(message),
         actions: [
           TextButton(
@@ -96,7 +95,7 @@ void search(String query) async {
       builder: (context) => HandwritingCanvas(
         onKanjiRecognized: (recognizedKanji) {
           // Xử lý kết quả nhận diện
-          setState((){
+          setState(() {
             // Lấy nội dung hiện có trong ô tìm kiếm
             String currentText = searchController.text;
             // Thêm kanji mới vào sau nội dung hiện có
@@ -116,7 +115,8 @@ void search(String query) async {
   void _recognizeKanji(String imageData) async {
     try {
       final response = await http.post(
-        Uri.parse("http://your-api-url.com/recognize_kanji"), // Cập nhật URL API
+        Uri.parse(
+            "http://your-api-url.com/recognize_kanji"), // Cập nhật URL API
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"image": imageData}),
       );
@@ -125,10 +125,10 @@ void search(String query) async {
         List<dynamic> results = jsonDecode(response.body)["predictions"];
         _showKanjiResults(results);
       } else {
-        _showErrorDialog("Lỗi nhận diện Kanji.");
+        _showErrorDialog("Error recognizing kanji.");
       }
     } catch (e) {
-      _showErrorDialog("Lỗi kết nối API: $e");
+      _showErrorDialog("Error connecting to API: $e");
     }
   }
 
@@ -136,7 +136,7 @@ void search(String query) async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Kanji nhận diện"),
+        title: Text("Detected Kanji"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: results.map((kanji) {
@@ -167,12 +167,13 @@ void search(String query) async {
                     child: TextField(
                       controller: searchController,
                       onChanged: search,
-                      onSubmitted: (query){
+                      onSubmitted: (query) {
                         search(query);
                       },
                       decoration: InputDecoration(
-                        hintText: "Nhập từ khóa...",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        hintText: "Enter a word...",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         prefixIcon: Icon(Icons.search),
                       ),
                     ),
@@ -181,7 +182,8 @@ void search(String query) async {
                     icon: Icon(Icons.wifi),
                     onPressed: checkApiConnection, // Nút kiểm tra API
                   ),
-                  IconButton( // Nút mở khung vẽ Kanji
+                  IconButton(
+                    // Nút mở khung vẽ Kanji
                     icon: Icon(Icons.edit),
                     onPressed: _openHandwritingCanvas,
                   ),
@@ -195,9 +197,9 @@ void search(String query) async {
                   children: [
                     TabBar(
                       tabs: [
-                        Tab(text: "Từ vựng"),
-                        Tab(text: "Hán tự"),
-                        Tab(text: "Kanji của tôi"),
+                        Tab(text: "Vocabulary"),
+                        Tab(text: "Kanji"),
+                        Tab(text: "My kanji"),
                       ],
                     ),
                     Expanded(
@@ -206,7 +208,9 @@ void search(String query) async {
                           VocabularyScreen(words: wordResults),
                           // KanjiScreen(kanjiList: kanjiResults),
                           // KanjiScreen(kanjiList: kanjiResults, searchQuery: searchController.text),
-                          KanjiScreen(kanjiList: kanjiResults, searchQuery: searchController.text),
+                          KanjiScreen(
+                              kanjiList: kanjiResults,
+                              searchQuery: searchController.text),
                           MyKanjiScreen(),
                         ],
                       ),

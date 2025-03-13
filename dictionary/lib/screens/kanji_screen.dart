@@ -23,9 +23,11 @@ class _KanjiScreenState extends State<KanjiScreen> {
   }
 
   void loadSavedKanji() async {
-    List<Map<String, dynamic>> savedKanjiList = await apiService.getSavedKanji();
+    List<Map<String, dynamic>> savedKanjiList =
+        await apiService.getSavedKanji();
     setState(() {
-      savedKanji = savedKanjiList.map((kanji) => kanji['kanji'] as String).toSet();
+      savedKanji =
+          savedKanjiList.map((kanji) => kanji['kanji'] as String).toSet();
     });
   }
 
@@ -36,7 +38,8 @@ class _KanjiScreenState extends State<KanjiScreen> {
         savedKanji.remove(kanji.kanji);
       });
     } else {
-      await apiService.saveKanji(kanji.kanji, kanji.kunReadings ?? "", kanji.meanings ?? "");
+      await apiService.saveKanji(
+          kanji.kanji, kanji.kunReadings ?? "", kanji.meanings ?? "");
       setState(() {
         savedKanji.add(kanji.kanji);
       });
@@ -45,13 +48,16 @@ class _KanjiScreenState extends State<KanjiScreen> {
 
   @override
   Widget build(BuildContext context) {
-    List<String> queryKanji = widget.searchQuery.split(''); // Chia từ khóa thành từng kanji riêng biệt
+    List<String> queryKanji = widget.searchQuery
+        .split(''); // Chia từ khóa thành từng kanji riêng biệt
     final filteredKanjiList = widget.kanjiList.where((kanji) {
       return queryKanji.contains(kanji.kanji);
     }).toList();
 
     if (filteredKanjiList.isEmpty) {
-      return Center(child: Text("Không tìm thấy hán tự.", style: TextStyle(fontSize: 18)));
+      return Center(
+          child: Text("No kanji characters found.",
+              style: TextStyle(fontSize: 18)));
     }
 
     return ListView.builder(
@@ -59,21 +65,24 @@ class _KanjiScreenState extends State<KanjiScreen> {
       itemCount: filteredKanjiList.length,
       itemBuilder: (context, index) {
         final kanji = filteredKanjiList[index];
-        final isSaved = savedKanji.contains(kanji.kanji); // Kiểm tra kanji đã lưu chưa
+        final isSaved =
+            savedKanji.contains(kanji.kanji); // Kiểm tra kanji đã lưu chưa
 
         return Card(
           elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ListTile(
             contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            title: Text(kanji.kanji, style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+            title: Text(kanji.kanji,
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Nghĩa: ${kanji.meanings ?? "Không có"}'),
-                Text('Âm Kun: ${kanji.kunReadings ?? "Không có"}'),
-                Text('Âm On: ${kanji.onReadings ?? "Không có"}'),
-                Text('Số nét: ${kanji.strokeCount}'),
+                Text('Meaning: ${kanji.meanings ?? "none"}'),
+                Text('Kunyomi: ${kanji.kunReadings ?? "none"}'),
+                Text('Onyomi: ${kanji.onReadings ?? "none"}'),
+                Text('Stroke: ${kanji.strokeCount}'),
               ],
             ),
             trailing: IconButton(

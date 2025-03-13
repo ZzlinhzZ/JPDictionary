@@ -22,9 +22,11 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
   }
 
   void loadSavedWords() async {
-    List<Map<String, dynamic>> savedKanjiList = await widget.apiService.getSavedKanji();
+    List<Map<String, dynamic>> savedKanjiList =
+        await widget.apiService.getSavedKanji();
     setState(() {
-      savedWords = savedKanjiList.map((word) => word['kanji'] as String).toSet();
+      savedWords =
+          savedKanjiList.map((word) => word['kanji'] as String).toSet();
     });
   }
 
@@ -47,7 +49,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     if (widget.words.isEmpty) {
       return Center(
         child: Text(
-          "Không tìm thấy từ vựng.",
+          "Not found the vocabulary.",
           style: TextStyle(fontSize: 18),
         ),
       );
@@ -78,11 +80,13 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
       itemCount: uniqueWords.length,
       itemBuilder: (context, index) {
         final word = uniqueWords[index];
-        final isSaved = savedWords.contains(word['written']); // Kiểm tra từ đã lưu chưa
+        final isSaved =
+            savedWords.contains(word['written']); // Kiểm tra từ đã lưu chưa
 
         return Card(
           elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ListTile(
             contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             title: Text(
@@ -97,14 +101,14 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                     Icon(Icons.hearing, color: Colors.blueAccent, size: 18),
                     SizedBox(width: 4),
                     Text(
-                      'Cách đọc: ${word['pronounced']}',
+                      'Pronounced: ${word['pronounced']}',
                       style: TextStyle(fontSize: 16, color: Colors.blueAccent),
                     ),
                   ],
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Nghĩa: ${word['meaning']}',
+                  'Meaning: ${word['meaning']}',
                   style: TextStyle(fontSize: 16),
                 ),
               ],
@@ -115,7 +119,8 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                 color: isSaved ? Colors.blueAccent : Colors.grey,
               ),
               onPressed: () {
-                toggleSaveWord(word['written']!, word['pronounced']!, word['meaning']!);
+                toggleSaveWord(
+                    word['written']!, word['pronounced']!, word['meaning']!);
               },
             ),
           ),

@@ -10,10 +10,12 @@ class QuizScreen extends StatefulWidget {
 class _QuizScreenState extends State<QuizScreen> {
   ApiService apiService = ApiService();
   List<Map<String, dynamic>> savedWords = [];
+  List<Map<String, dynamic>> wrongAnswers = [];
+  List<int> usedIndices = [];
+  int? currentQuestionIndex;
   Map<String, dynamic>? currentQuestion;
   List<String> choices = [];
   int score = 0;
-  int questionIndex = 0;
   bool showAnswer = false;
   String? selectedAnswer;
 
@@ -34,19 +36,34 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   void generateQuestion() {
-    if (savedWords.isEmpty) return;
+    // Tạo danh sách index chưa dùng
+    List<int> availableIndices = [];
+    for (int i = 0; i < savedWords.length; i++) {
+      if (!usedIndices.contains(i)) {
+        availableIndices.add(i);
+      }
+    }
+
+    if (availableIndices.isEmpty) {
+      _showResultDialog();
+      return;
+    }
 
     final random = Random();
-    currentQuestion = savedWords[random.nextInt(savedWords.length)];
+    int randomIndex = availableIndices[random.nextInt(availableIndices.length)];
+    currentQuestionIndex = randomIndex;
+    currentQuestion = savedWords[randomIndex];
+    usedIndices.add(randomIndex);
 
+    // Tạo các lựa chọn
     List<String> allMeanings =
         savedWords.map((word) => word['meaning'] as String).toList();
     allMeanings.remove(currentQuestion!['meaning']);
 
-    List<String> wrongAnswers = List.from(allMeanings)..shuffle();
-    wrongAnswers = wrongAnswers.take(3).toList();
+    List<String> wrongChoices = List.from(allMeanings)..shuffle();
+    wrongChoices = wrongChoices.take(3).toList();
 
-    choices = [...wrongAnswers, currentQuestion!['meaning']];
+    choices = [...wrongChoices, currentQuestion!['meaning']];
     choices.shuffle();
 
     setState(() {
@@ -61,16 +78,15 @@ class _QuizScreenState extends State<QuizScreen> {
       selectedAnswer = selected;
       if (selected == currentQuestion!['meaning']) {
         score += 1;
+      } else {
+        wrongAnswers.add(currentQuestion!);
       }
     });
   }
 
   void nextQuestion() {
-    if (questionIndex < savedWords.length - 1) {
-      setState(() {
-        questionIndex++;
-        generateQuestion();
-      });
+    if (usedIndices.length < savedWords.length) {
+      generateQuestion();
     } else {
       _showResultDialog();
     }
@@ -80,10 +96,33 @@ class _QuizScreenState extends State<QuizScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Kết thúc Quiz"),
-        content:
-            Text("Bạn đã trả lời đúng $score / ${savedWords.length} câu!"),
+        title: Text("End Quiz"),
+        content: Text(
+            "You answered  $score / ${usedIndices.length} questions correctly!"),
         actions: [
+          if (wrongAnswers.isNotEmpty)
+            TextButton(
+              onPressed: () {
+                // Tạo bản sao của wrongAnswers trước khi xóa
+                final newQuizList =
+                    List<Map<String, dynamic>>.from(wrongAnswers);
+
+                setState(() {
+                  savedWords = newQuizList; // Sử dụng bản sao
+                  usedIndices.clear();
+                  wrongAnswers.clear(); // Chỉ xóa sau khi đã copy
+                  score = 0;
+                });
+
+                Navigator.pop(context);
+
+                // Kiểm tra danh sách mới có dữ liệu không
+                if (savedWords.isNotEmpty) {
+                  generateQuestion();
+                }
+              },
+              child: Text("Review the wrong sentence"),
+            ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
@@ -115,26 +154,28 @@ class _QuizScreenState extends State<QuizScreen> {
   Widget build(BuildContext context) {
     if (savedWords.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: Text("Quiz Ôn Tập")),
+        appBar: AppBar(title: Text("Quiz Practice")),
         body: Center(
             child: Text(
-          "Không có từ nào trong danh sách lưu!",
+          "There are no words in the saved list!",
           style: TextStyle(fontSize: 18),
         )),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text("Quiz Ôn Tập")),
+      appBar: AppBar(title: Text("Quiz Practice")),
       body: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              "Câu ${questionIndex + 1} / ${savedWords.length}",
+              "Question ${usedIndices.length} / ${savedWords.length}",
               style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue),
             ),
             SizedBox(height: 16),
             Container(
@@ -142,9 +183,7 @@ class _QuizScreenState extends State<QuizScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(color: Colors.black12, blurRadius: 6)
-                ],
+                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
               ),
               child: Column(
                 children: [
@@ -157,9 +196,8 @@ class _QuizScreenState extends State<QuizScreen> {
                   ),
                   SizedBox(height: 10),
                   Text(
-                    "Chọn nghĩa đúng của Kanji trên:",
-                    style:
-                        TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
+                    "Choose the correct meaning of this Kanji:",
+                    style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
                   ),
                 ],
               ),
@@ -210,7 +248,7 @@ class _QuizScreenState extends State<QuizScreen> {
             if (showAnswer)
               ElevatedButton(
                 onPressed: nextQuestion,
-                child: Text("Tiếp tục"),
+                child: Text("Continute"),
               ),
           ],
         ),

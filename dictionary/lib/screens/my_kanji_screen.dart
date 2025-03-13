@@ -43,7 +43,7 @@ class _MyKanjiScreenState extends State<MyKanjiScreen> {
           padding: EdgeInsets.all(8.0),
           child: ElevatedButton(
             onPressed: savedKanji.isNotEmpty ? startQuiz : null,
-            child: Text("Bắt đầu Quiz"),
+            child: Text("Start Quiz"),
           ),
         ),
         Row(
@@ -57,7 +57,7 @@ class _MyKanjiScreenState extends State<MyKanjiScreen> {
                 });
               },
             ),
-            Text("Hiển thị cách đọc"),
+            Text("Show reading"),
             SizedBox(width: 16),
             Checkbox(
               value: showMeaning,
@@ -67,27 +67,35 @@ class _MyKanjiScreenState extends State<MyKanjiScreen> {
                 });
               },
             ),
-            Text("Hiển thị nghĩa"),
+            Text("Show meaning"),
           ],
         ),
         Expanded(
           child: savedKanji.isEmpty
-              ? Center(child: Text("Chưa có kanji nào được lưu.", style: TextStyle(fontSize: 18)))
+              ? Center(
+                  child: Text("No kanji saved yet.",
+                      style: TextStyle(fontSize: 18)))
               : ListView.builder(
                   itemCount: savedKanji.length,
                   itemBuilder: (context, index) {
                     final kanji = savedKanji[index];
                     return Card(
                       elevation: 3,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       child: ListTile(
-                        contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                        title: Text(kanji['kanji'], style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                        contentPadding:
+                            EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        title: Text(kanji['kanji'],
+                            style: TextStyle(
+                                fontSize: 32, fontWeight: FontWeight.bold)),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (showPronounced) Text('Cách đọc: ${kanji['pronounced']}'),
-                            if (showMeaning) Text('Nghĩa: ${kanji['meaning']}'),
+                            if (showPronounced)
+                              Text('Pronouced: ${kanji['pronounced']}'),
+                            if (showMeaning)
+                              Text('Meaning: ${kanji['meaning']}'),
                           ],
                         ),
                       ),

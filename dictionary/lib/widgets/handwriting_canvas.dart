@@ -36,8 +36,8 @@ class _HandwritingCanvasState extends State<HandwritingCanvas> {
 
     try {
       // Chuyển canvas thành ảnh PNG
-      RenderRepaintBoundary boundary =
-          _canvasKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      RenderRepaintBoundary boundary = _canvasKey.currentContext!
+          .findRenderObject() as RenderRepaintBoundary;
       ui.Image image = await boundary.toImage();
       ByteData? byteData = await _convertToWhiteBackground(image);
       Uint8List pngBytes = byteData!.buffer.asUint8List();
@@ -50,7 +50,7 @@ class _HandwritingCanvasState extends State<HandwritingCanvas> {
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Lỗi khi nhận diện Kanji: $e")),
+        SnackBar(content: Text("Error recognizing Kanji: $e")),
       );
     } finally {
       setState(() {
@@ -77,7 +77,8 @@ class _HandwritingCanvasState extends State<HandwritingCanvas> {
     Paint paint = Paint();
     canvas.drawImage(image, Offset.zero, paint);
 
-    final newImage = await recorder.endRecording().toImage(image.width, image.height);
+    final newImage =
+        await recorder.endRecording().toImage(image.width, image.height);
     return await newImage.toByteData(format: ui.ImageByteFormat.png);
   }
 
@@ -91,8 +92,10 @@ class _HandwritingCanvasState extends State<HandwritingCanvas> {
         _points.removeRange(lastNullIndex, _points.length);
 
         if (lastNullIndex > 0) {
-          int previousNullIndex = _points.sublist(0, lastNullIndex).lastIndexOf(null);
-          int startIndex = (previousNullIndex != -1) ? previousNullIndex + 1 : 0;
+          int previousNullIndex =
+              _points.sublist(0, lastNullIndex).lastIndexOf(null);
+          int startIndex =
+              (previousNullIndex != -1) ? previousNullIndex + 1 : 0;
           _points.removeRange(startIndex, lastNullIndex);
         }
       } else {
@@ -109,7 +112,7 @@ class _HandwritingCanvasState extends State<HandwritingCanvas> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text("Vẽ Kanji"),
+      title: Text("Draw Kanji"),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -119,7 +122,8 @@ class _HandwritingCanvasState extends State<HandwritingCanvas> {
               children: _recognizedKanji.map((kanji) {
                 return GestureDetector(
                   onTap: () {
-                    widget.onKanjiRecognized(kanji); // Gọi callback khi chọn Kanji
+                    widget.onKanjiRecognized(
+                        kanji); // Gọi callback khi chọn Kanji
                   },
                   child: Padding(
                     padding: EdgeInsets.all(8.0),
@@ -134,11 +138,12 @@ class _HandwritingCanvasState extends State<HandwritingCanvas> {
             child: Container(
               width: 300,
               height: 300,
-              decoration: BoxDecoration(border: Border.all(color: Colors.black)),
+              decoration:
+                  BoxDecoration(border: Border.all(color: Colors.black)),
               child: GestureDetector(
                 onPanUpdate: (details) {
-                  RenderBox renderBox =
-                      _canvasKey.currentContext!.findRenderObject() as RenderBox;
+                  RenderBox renderBox = _canvasKey.currentContext!
+                      .findRenderObject() as RenderBox;
                   Offset localPosition =
                       renderBox.globalToLocal(details.globalPosition);
                   setState(() {
