@@ -133,7 +133,8 @@ class ApiService {
       List data = json.decode(utf8.decode(response.bodyBytes));
       return List<Map<String, dynamic>>.from(data);
     }
-    throw Exception("Failed to load saved kanji");
+    // throw Exception("Failed to load saved kanji");
+    return [];
   }
 
   Future<List<String>> recognizeKanji(Uint8List imageData) async {
@@ -155,5 +156,45 @@ class ApiService {
       print("Lỗi nhận diện kanji: $e");
       return [];
     }
+  }
+
+  Future<Map<String, dynamic>> getComments(String kanji, int page) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('authToken');
+
+    final response = await http.get(
+      Uri.parse("$baseUrl/comments/$kanji?page=$page"),
+      headers: {"Authorization": "Bearer $token"},
+    );
+
+    return json.decode(utf8.decode(response.bodyBytes));
+  }
+
+  Future<void> addComment(String kanji, String content) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('authToken');
+
+    await http.post(
+      Uri.parse("$baseUrl/comments"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token"
+      },
+      body: jsonEncode({"kanji": kanji, "content": content}),
+    );
+  }
+
+  Future<void> voteComment(int commentId, String action) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('authToken');
+
+    await http.post(
+      Uri.parse("$baseUrl/comments/$commentId/vote"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token"
+      },
+      body: jsonEncode({"action": action}),
+    );
   }
 }

@@ -147,56 +147,56 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     );
   }
 
-  void _handleAuthButtonPress() {
-    if (authToken != null) {
-      showMenu(
-        context: context,
-        position: RelativeRect.fromLTRB(100, 100, 0, 0),
-        items: [
-          PopupMenuItem(
-            child: ListTile(
-              title: Text('Logout'),
-              onTap: () async {
-                Navigator.pop(context);
-                await apiService.logout(authToken!);
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.remove('authToken');
-                await prefs.remove('username');
-                setState(() {
-                  authToken = null;
-                  username = null;
-                });
-              },
-            ),
-          ),
-        ],
-      );
-    } else {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Authentication'),
-          content: Text('Choose an option'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showAuthDialog(true);
-              },
-              child: Text('Login'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showAuthDialog(false);
-              },
-              child: Text('Register'),
-            ),
-          ],
-        ),
-      );
-    }
-  }
+  // void _handleAuthButtonPress() {
+  //   if (authToken != null) {
+  //     showMenu(
+  //       context: context,
+  //       position: RelativeRect.fromLTRB(100, 100, 0, 0),
+  //       items: [
+  //         PopupMenuItem(
+  //           child: ListTile(
+  //             title: Text('Logout'),
+  //             onTap: () async {
+  //               Navigator.pop(context);
+  //               await apiService.logout(authToken!);
+  //               final prefs = await SharedPreferences.getInstance();
+  //               await prefs.remove('authToken');
+  //               await prefs.remove('username');
+  //               setState(() {
+  //                 authToken = null;
+  //                 username = null;
+  //               });
+  //             },
+  //           ),
+  //         ),
+  //       ],
+  //     );
+  //   } else {
+  //     showDialog(
+  //       context: context,
+  //       builder: (context) => AlertDialog(
+  //         title: Text('Authentication'),
+  //         content: Text('Choose an option'),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () {
+  //               Navigator.pop(context);
+  //               _showAuthDialog(true);
+  //             },
+  //             child: Text('Login'),
+  //           ),
+  //           TextButton(
+  //             onPressed: () {
+  //               Navigator.pop(context);
+  //               _showAuthDialog(false);
+  //             },
+  //             child: Text('Register'),
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //   }
+  // }
 
   void search(String query) async {
     if (query.isEmpty) {
