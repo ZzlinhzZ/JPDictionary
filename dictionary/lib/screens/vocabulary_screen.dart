@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/word_model.dart';
 import '../services/api_service.dart';
+import 'auth_screen.dart';
 
 class VocabularyScreen extends StatefulWidget {
   final List<Word> words;
@@ -31,17 +32,65 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
   }
 
   void toggleSaveWord(String written, String pronounced, String meaning) async {
-    if (savedWords.contains(written)) {
-      await widget.apiService.removeKanji(written);
-      setState(() {
-        savedWords.remove(written);
-      });
-    } else {
-      await widget.apiService.saveKanji(written, pronounced, meaning);
-      setState(() {
-        savedWords.add(written);
-      });
+    final isLoggedIn = await widget.apiService.isLoggedIn();
+    if (!isLoggedIn) {
+      _showLoginRequiredDialog();
+      return;
     }
+
+    try {
+      if (savedWords.contains(written)) {
+        await widget.apiService.removeKanji(written);
+        setState(() => savedWords.remove(written));
+      } else {
+        await widget.apiService.saveKanji(written, pronounced, meaning);
+        setState(() => savedWords.add(written));
+      }
+    } catch (e) {
+      _showErrorDialog(e.toString());
+    }
+  }
+
+  void _showLoginRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Yêu cầu đăng nhập"),
+        content: Text("Bạn cần đăng nhập để sử dụng tính năng này"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Hủy"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => AuthScreen()),
+              );
+            },
+            child: Text("Đăng nhập"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Lỗi"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

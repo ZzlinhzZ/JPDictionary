@@ -20,10 +20,28 @@ class _MyKanjiScreenState extends State<MyKanjiScreen> {
   }
 
   void loadSavedKanji() async {
-    List<Map<String, dynamic>> kanjiList = await apiService.getSavedKanji();
-    setState(() {
-      savedKanji = kanjiList;
-    });
+    try {
+      final kanjiList = await apiService.getSavedKanji();
+      setState(() => savedKanji = kanjiList);
+    } catch (e) {
+      _showErrorDialog(e.toString());
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Lỗi"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   void startQuiz() {

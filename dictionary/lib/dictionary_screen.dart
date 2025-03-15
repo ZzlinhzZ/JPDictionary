@@ -6,8 +6,10 @@ import 'models/kanji_model.dart';
 import 'screens/vocabulary_screen.dart';
 import 'screens/kanji_screen.dart';
 import 'screens/my_kanji_screen.dart';
+import 'screens/auth_screen.dart';
 import '../widgets/handwriting_canvas.dart';
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DictionaryScreen extends StatefulWidget {
   @override
@@ -19,6 +21,182 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   List<Word> wordResults = [];
   List<Kanji> kanjiResults = [];
   TextEditingController searchController = TextEditingController();
+
+  String? authToken;
+  String? username;
+  bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAuthToken();
+  }
+
+  void _loadAuthToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      authToken = prefs.getString('authToken');
+      username = prefs.getString('username');
+    });
+
+    if (authToken != null) {
+      _fetchCurrentUser();
+    }
+  }
+
+  void _fetchCurrentUser() async {
+    try {
+      final user = await apiService.getCurrentUser(authToken!);
+      setState(() {
+        username = user['username'];
+      });
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('username', user['username']);
+    } catch (e) {
+      print("Error fetching user: $e");
+    }
+  }
+
+  void _showAuthDialog(bool isLogin) {
+    TextEditingController usernameController = TextEditingController();
+    TextEditingController passwordController = TextEditingController();
+    TextEditingController emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isLogin ? 'Login' : 'Register'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!isLogin)
+                TextField(
+                  controller: emailController,
+                  decoration: InputDecoration(labelText: 'Email'),
+                ),
+              TextField(
+                controller: usernameController,
+                decoration: InputDecoration(labelText: 'Username'),
+              ),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: InputDecoration(labelText: 'Password'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                setState(() => isLoading = true);
+                final prefs = await SharedPreferences.getInstance();
+
+                if (isLogin) {
+                  final response = await apiService.login(
+                    usernameController.text,
+                    passwordController.text,
+                  );
+
+                  await prefs.setString('authToken', response['token']);
+                  await prefs.setString('username', usernameController.text);
+
+                  setState(() {
+                    authToken = response['token'];
+                    username = usernameController.text;
+                  });
+                } else {
+                  final response = await apiService.register(
+                    usernameController.text,
+                    emailController.text,
+                    passwordController.text,
+                  );
+
+                  await prefs.setString('authToken', response['token']);
+                  await prefs.setString('username', usernameController.text);
+
+                  setState(() {
+                    authToken = response['token'];
+                    username = usernameController.text;
+                  });
+                }
+
+                Navigator.pop(context);
+              } catch (e) {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text('Error'),
+                    content: Text(e.toString()),
+                  ),
+                );
+              } finally {
+                setState(() => isLoading = false);
+              }
+            },
+            child: Text(isLogin ? 'Login' : 'Register'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleAuthButtonPress() {
+    if (authToken != null) {
+      showMenu(
+        context: context,
+        position: RelativeRect.fromLTRB(100, 100, 0, 0),
+        items: [
+          PopupMenuItem(
+            child: ListTile(
+              title: Text('Logout'),
+              onTap: () async {
+                Navigator.pop(context);
+                await apiService.logout(authToken!);
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.remove('authToken');
+                await prefs.remove('username');
+                setState(() {
+                  authToken = null;
+                  username = null;
+                });
+              },
+            ),
+          ),
+        ],
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Authentication'),
+          content: Text('Choose an option'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showAuthDialog(true);
+              },
+              child: Text('Login'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showAuthDialog(false);
+              },
+              child: Text('Register'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
 
   void search(String query) async {
     if (query.isEmpty) {
@@ -163,6 +341,50 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
               padding: EdgeInsets.all(8.0),
               child: Row(
                 children: [
+                  IconButton(
+                    icon: Icon(Icons.person, color: Colors.blue),
+                    onPressed: () async {
+                      if (authToken == null) {
+                        final result = await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AuthScreen()),
+                        );
+                        if (result ?? false) {
+                          _loadAuthToken();
+                        }
+                      } else {
+                        showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: Text('Tài khoản'),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Xin chào $username!'),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    await apiService.logout(authToken!);
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    await prefs.remove('authToken');
+                                    await prefs.remove('username');
+                                    setState(() {
+                                      authToken = null;
+                                      username = null;
+                                    });
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text('Đăng xuất'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
                   Expanded(
                     child: TextField(
                       controller: searchController,
