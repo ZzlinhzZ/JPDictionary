@@ -356,12 +356,12 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                         showDialog(
                           context: context,
                           builder: (_) => AlertDialog(
-                            title: Text('Tài khoản'),
+                            title: Text('Account'),
                             content: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Xin chào $username!'),
+                                Text('Hello $username!'),
                                 const SizedBox(height: 16),
                                 ElevatedButton(
                                   onPressed: () async {
@@ -376,7 +376,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                                     });
                                     Navigator.pop(context);
                                   },
-                                  child: const Text('Đăng xuất'),
+                                  child: const Text('Logout'),
                                 ),
                               ],
                             ),

@@ -153,7 +153,7 @@ class ApiService {
         throw Exception("Lỗi API: ${response.statusCode}");
       }
     } catch (e) {
-      print("Lỗi nhận diện kanji: $e");
+      // print("Lỗi nhận diện kanji: $e");
       return [];
     }
   }
@@ -194,7 +194,7 @@ class ApiService {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token"
       },
-      body: jsonEncode({"action": action}),
+      body: jsonEncode({"action": action.replaceAll('un', '')}),
     );
   }
 }

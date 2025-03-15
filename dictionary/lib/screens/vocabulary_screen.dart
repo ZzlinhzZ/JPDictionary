@@ -55,12 +55,12 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Yêu cầu đăng nhập"),
-        content: Text("Bạn cần đăng nhập để sử dụng tính năng này"),
+        title: Text("Login Required"),
+        content: Text("Log in to use this feature"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Hủy"),
+            child: Text("Cancel"),
           ),
           TextButton(
             onPressed: () {
@@ -70,7 +70,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                 MaterialPageRoute(builder: (_) => AuthScreen()),
               );
             },
-            child: Text("Đăng nhập"),
+            child: Text("Login"),
           ),
         ],
       ),
@@ -149,9 +149,17 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                   children: [
                     Icon(Icons.hearing, color: Colors.blueAccent, size: 18),
                     SizedBox(width: 4),
-                    Text(
-                      'Pronounced: ${word['pronounced']}',
-                      style: TextStyle(fontSize: 16, color: Colors.blueAccent),
+                    Expanded(
+                      // Thêm Expanded ở đây
+                      child: Text(
+                        'Pronounced: ${word['pronounced']}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.blueAccent,
+                        ),
+                        overflow: TextOverflow.ellipsis, // Thêm xử lý overflow
+                        maxLines: 2, // Giới hạn số dòng
+                      ),
                     ),
                   ],
                 ),
@@ -159,6 +167,9 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                 Text(
                   'Meaning: ${word['meaning']}',
                   style: TextStyle(fontSize: 16),
+                  overflow:
+                      TextOverflow.ellipsis, // Thêm cho phần meaning nếu cần
+                  maxLines: 2, // Cho phép hiển thị tối đa 2 dòng
                 ),
               ],
             ),

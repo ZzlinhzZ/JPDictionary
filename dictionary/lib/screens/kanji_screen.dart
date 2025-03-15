@@ -123,10 +123,18 @@ class _KanjiScreenState extends State<KanjiScreen> {
     }
 
     try {
-      await apiService.voteComment(commentId, action);
+      final currentVote =
+          comments.firstWhere((c) => c['id'] == commentId)['user_vote'];
+
+      if (currentVote == action) {
+        // Hủy vote nếu trùng action
+        await apiService.voteComment(commentId, 'un$action');
+      } else {
+        await apiService.voteComment(commentId, action);
+      }
       await _loadComments();
     } catch (e) {
-      _showErrorDialog('Failed to process vote');
+      print("Error voting: $e");
     }
   }
 
@@ -134,12 +142,12 @@ class _KanjiScreenState extends State<KanjiScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Yêu cầu đăng nhập'),
-        content: const Text('Vui lòng đăng nhập để sử dụng tính năng này'),
+        title: const Text('Login Required'),
+        content: const Text('Log in to use this feature'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
@@ -147,7 +155,7 @@ class _KanjiScreenState extends State<KanjiScreen> {
               Navigator.push(
                   ctx, MaterialPageRoute(builder: (_) => const AuthScreen()));
             },
-            child: const Text('Đăng nhập'),
+            child: const Text('Login'),
           ),
         ],
       ),
@@ -201,7 +209,7 @@ class _KanjiScreenState extends State<KanjiScreen> {
     if (selectedKanji == null) {
       return const Center(
         child: Text(
-          "Vui lòng chọn một chữ Kanji để xem chi tiết",
+          "Please select a kanji to see its details.",
           style: TextStyle(fontSize: 18),
         ),
       );
@@ -229,10 +237,11 @@ class _KanjiScreenState extends State<KanjiScreen> {
           style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        _buildDetailItem('Nghĩa:', selectedKanji!.meanings),
-        _buildDetailItem('Âm Kun:', selectedKanji!.kunReadings),
-        _buildDetailItem('Âm On:', selectedKanji!.onReadings),
-        _buildDetailItem('Số nét:', selectedKanji!.strokeCount.toString()),
+        _buildDetailItem('Meanings:', selectedKanji!.meanings),
+        _buildDetailItem('Kunyomi:', selectedKanji!.kunReadings),
+        _buildDetailItem('Onyomi:', selectedKanji!.onReadings),
+        _buildDetailItem(
+            'Stroke count:', selectedKanji!.strokeCount.toString()),
         const SizedBox(height: 16),
         IconButton(
           icon: Icon(
@@ -260,10 +269,29 @@ class _KanjiScreenState extends State<KanjiScreen> {
               text: '$label ',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            TextSpan(text: value ?? "Không có"),
+            TextSpan(text: value ?? "without meaning"),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildVoteButton(
+      Map<String, dynamic> comment, String action, IconData icon) {
+    final isActive = comment['user_vote'] == action;
+    final count = comment[action == 'like' ? 'likes' : 'dislikes'];
+
+    return Row(
+      children: [
+        IconButton(
+          icon: Icon(
+            icon,
+            color: isActive ? Colors.blue : Colors.grey,
+          ),
+          onPressed: () => _handleVote(comment['id'], action),
+        ),
+        Text(count.toString()),
+      ],
     );
   }
 
@@ -272,7 +300,7 @@ class _KanjiScreenState extends State<KanjiScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Bình luận',
+          'Comments',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
@@ -292,7 +320,7 @@ class _KanjiScreenState extends State<KanjiScreen> {
     if (comments.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 16),
-        child: Text('Chưa có bình luận nào'),
+        child: Text('No comments yet'),
       );
     }
 
@@ -325,7 +353,7 @@ class _KanjiScreenState extends State<KanjiScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      comment['username'] ?? 'Ẩn danh',
+                      comment['username'] ?? 'Anonymous',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -391,7 +419,7 @@ class _KanjiScreenState extends State<KanjiScreen> {
                   }
                 : null,
           ),
-          Text('Trang $currentPage/$totalPages'),
+          Text('Page $currentPage/$totalPages'),
           IconButton(
             icon: const Icon(Icons.chevron_right),
             onPressed: currentPage < totalPages
@@ -418,7 +446,7 @@ class _KanjiScreenState extends State<KanjiScreen> {
             TextField(
               controller: _commentController,
               decoration: InputDecoration(
-                labelText: 'Viết bình luận...',
+                labelText: 'Write a comment...',
                 border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
                   icon: isSubmittingComment
@@ -432,7 +460,7 @@ class _KanjiScreenState extends State<KanjiScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Nhấn Enter để xuống dòng, nhấn nút gửi để đăng',
+              'Press Enter to go downline, press the submit button to post',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
           ],
@@ -445,7 +473,7 @@ class _KanjiScreenState extends State<KanjiScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chi tiết Kanji'),
+        title: const Text('Detail Kanji'),
       ),
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
